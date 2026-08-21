@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+  TheChatApp (UCA) — Single-Page App Prototype
+  -----------------------------------------------
+  Three views driven by JS: Landing, Auth (Login/Signup), Chat.
+  All styles are embedded below. Fonts loaded from Google Fonts.
+  JS handles view routing, form validation, and chat interactions.
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TheChatApp | Premium Communication</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* Primary Palette */
+      --color-mint: #59B292;
+      --color-gold: #FFC94D;
+      --color-cream: #FAE7CB;
+      --color-coral: #FA6781;
+
+      /* UI Hierarchy */
+      --bg-main: var(--color-cream);
+      --text-primary: #1A2A24;
+      /* Deep Slate Teal for readability */
+      --text-secondary: #4A5D56;
+      --white: #FFFFFF;
+
+      /* Shadows & Depth */
+      --shadow-soft: 0 10px 30px -10px rgba(26, 42, 36, 0.08);
+      --shadow-elevated: 0 20px 40px -15px rgba(26, 42, 36, 0.12);
+
+      /* Grid & Spacing */
+      --grid-unit: 8px;
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 8px;
+
+      /* Transitions */
+      --transition-smooth: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-main);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--color-mint);
+      border-radius: 10px;
+      border: 2px solid var(--bg-main);
+    }
+
+    /* Utility Classes */
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* All buttons share this base — padding, font, and the smooth cubic-bezier transition */
+    .btn {
+      padding: 14px 28px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 15px;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background-color: var(--color-mint);
+      color: var(--white);
+      box-shadow: 0 4px 14px rgba(89, 178, 146, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(89, 178, 146, 0.4);
+      filter: brightness(1.05);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--color-mint);
+      color: var(--color-mint);
+    }
+
+    .btn-outline:hover {
+      background: rgba(89, 178, 146, 0.05);
+      transform: translateY(-2px);
+    }
+
+    /* Quick utility to fully hide elements — used by showView() for view switching */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Header */
+    header {
+      padding: 20px 0;
+      background: rgba(250, 231, 203, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      transition: var(--transition-smooth);
+    }
+
+    nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--color-mint);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+      align-items: center;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 500;
+      font-size: 15px;
+      transition: var(--transition-smooth);
+    }
+
+    .nav-links a:hover {
+      color: var(--color-mint);
+    }
+
+    /* Main Content */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* View: Landing Page */
+    #view-landing {
+      padding: 80px 0;
+      animation: fadeIn 0.8s ease-out;
+    }
+
+    /* 2-column grid on desktop; stacks to 1 column on mobile (see @media below) */
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      margin-bottom: 100px;
+    }
+
+    .hero-text h1 {
+      font-size: clamp(40px, 5vw, 64px);
+      line-height: 1.1;
+      font-weight: 800;
+      margin-bottom: 24px;
+      color: var(--text-primary);
+    }
+
+    .hero-text p {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 40px;
+      max-width: 500px;
+    }
+
+    .hero-visual {
+      position: relative;
+    }
+
+    /* Decorative blurred gradient behind the hero card — gives depth without being heavy */
+    .hero-blob {
+      width: 100%;
+      height: 400px;
+      background: linear-gradient(135deg, var(--color-mint), var(--color-gold));
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+      filter: blur(40px);
+      opacity: 0.2;
+      position: absolute;
+      z-index: -1;
+    }
+
+    .hero-card {
+      background: var(--white);
+      padding: 32px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-elevated);
+      transform: rotate(-2deg);
+      transition: var(--transition-smooth);
+    }
+
+    .hero-card:hover {
+      transform: rotate(0) scale(1.02);
+    }
+
+    /* The 3-column feature grid below the hero section */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+
+    .feature-card {
+      background: var(--white);
+      padding: 40px;
+      border-radius: var(--radius-lg);
+      transition: var(--transition-smooth);
+      border: 1px solid rgba(26, 42, 36, 0.05);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-10px);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    /* View: Auth Page */
+    #view-auth {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 0;
+      flex: 1;
+    }
+
+    .auth-container {
+      background: var(--white);
+      width: 100%;
+      max-width: 440px;
+      padding: 48px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-elevated);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .auth-header {
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .auth-header h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    /* Each input group wraps: label + input (or password-wrapper) + validation msg */
+    .input-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text-secondary);
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid rgba(26, 42, 36, 0.1);
+      font-family: inherit;
+      font-size: 15px;
+      transition: var(--transition-smooth);
+      background: var(--white);
+    }
+
+    /* Teal focus ring instead of the default browser outline — much cleaner look */
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--color-mint);
+      box-shadow: 0 0 0 4px rgba(89, 178, 146, 0.1);
+    }
+
+    .auth-toggle {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .auth-toggle span {
+      color: var(--color-mint);
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* View: Chat App */
+    #view-chat {
+      flex: 1;
+      display: flex;
+      background: var(--white);
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      max-height: calc(100vh - 160px);
+    }
+
+    .chat-sidebar {
+      width: 320px;
+      border-right: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      flex-direction: column;
+      background: #F9FBFA;
+    }
+
+    .sidebar-header {
+      padding: 24px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .search-bar {
+      background: var(--bg-main);
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .search-bar input {
+      border: none;
+      background: transparent;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .contact-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .contact-item {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+
+    .contact-item:hover {
+      background: var(--bg-main);
+    }
+
+    /* Active contact gets a left mint border to make it obvious which chat is open */
+    .contact-item.active {
+      background: rgba(89, 178, 146, 0.1);
+      border-left: 4px solid var(--color-mint);
+    }
+
+    .avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--color-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .contact-info h4 {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .contact-info p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+    }
+
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--white);
+    }
+
+    .chat-header {
+      padding: 16px 32px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Subtle dot pattern on the chat background using a radial gradient — avoids a flat look */
+    .chat-messages {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+      background-color: var(--bg-main);
+      background-image: radial-gradient(var(--color-gold) 0.5px, transparent 0.5px);
+      background-size: 20px 20px;
+      opacity: 0.8;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      max-width: 60%;
+      padding: 12px 18px;
+      border-radius: var(--radius-md);
+      font-size: 15px;
+    }
+
+    /* Received messages float left; sent messages float right in mint green */
+    .message.received {
+      align-self: flex-start;
+      background: var(--white);
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .message.sent {
+      align-self: flex-end;
+      background: var(--color-mint);
+      color: var(--white);
+      border-bottom-right-radius: 4px;
+      box-shadow: 0 2px 5px rgba(89, 178, 146, 0.2);
+    }
+
+    .chat-input-area {
+      padding: 24px 32px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .chat-input-wrapper {
+      flex: 1;
+      background: #F3F4F6;
+      border-radius: var(--radius-md);
+      padding: 4px 16px;
+      display: flex;
+      align-items: center;
+    }
+
+    .chat-input-wrapper input {
+      width: 100%;
+      padding: 12px 0;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 15px;
+    }
+
+    /* Footer */
+    footer {
+      padding: 40px 0;
+      background: var(--text-primary);
+      color: var(--white);
+      text-align: center;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 24px;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.6);
+      text-decoration: none;
+      font-size: 14px;
+      transition: var(--transition-smooth);
+    }
+
+    .footer-links a:hover {
+      color: var(--color-mint);
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+
+      .hero-text p {
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .features {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-visual {
+        display: none;
+      }
+
+      .chat-sidebar {
+        width: 80px;
+      }
+
+      .contact-info,
+      .sidebar-header h3 {
+        display: none;
+      }
+
+      .chat-messages {
+        padding: 16px;
+      }
+
+      .message {
+        max-width: 85%;
+      }
+    }
+
+    /* Sign-up Form & Password UI Specific CSS */
+    .password-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    
+    .password-wrapper input {
+      width: 100%;
+      padding: 14px 16px;
+      padding-right: 64px; /* Ensure text doesn't hide behind the toggle button */
+      border-radius: var(--radius-sm);
+      border: 1.5px solid rgba(26, 42, 36, 0.1);
+      font-family: inherit;
+      font-size: 15px;
+      transition: var(--transition-smooth);
+      background: var(--color-cream);
+    }
+    
+    .password-wrapper input:focus {
+      outline: none;
+      border-color: var(--color-mint);
+      box-shadow: 0 0 0 4px rgba(89, 178, 146, 0.15);
+    }
+    
+    .password-wrapper input.input-error {
+      border-color: var(--color-coral);
+    }
+    
+    .password-wrapper input.input-error:focus {
+      box-shadow: 0 0 0 4px rgba(250, 103, 129, 0.15);
+    }
+
+    .toggle-password {
+      position: absolute;
+      right: 16px;
+      background: transparent;
+      border: none;
+      color: var(--color-mint);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0;
+      transition: var(--transition-smooth);
+    }
+
+    .toggle-password:hover {
+      color: var(--text-primary);
+    }
+
+    .validation-msg {
+      font-size: 12px;
+      font-weight: 500;
+      margin-top: 6px;
+      min-height: 18px;
+      transition: var(--transition-smooth);
+      color: var(--text-secondary);
+    }
+
+    .validation-msg.error {
+      color: var(--color-coral);
+    }
+    
+    .validation-msg.success {
+      color: var(--color-mint);
+    }
+
+    /* Login Error State */
+    .login-error-banner {
+      background: rgba(250, 103, 129, 0.08);
+      border: 1px solid rgba(250, 103, 129, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      color: var(--color-coral);
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .login-error-banner.visible {
+      display: flex;
+    }
+
+    .input-group input.input-error {
+      border-color: var(--color-coral) !important;
+      box-shadow: 0 0 0 3px rgba(250, 103, 129, 0.12);
+    }
+
+    /* Signup Success Screen */
+    .signup-success {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px 0;
+      animation: fadeIn 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    }
+
+    .signup-success.visible {
+      display: flex;
+    }
+
+    .success-icon-wrap {
+      width: 72px;
+      height: 72px;
+      background: rgba(89, 178, 146, 0.12);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .success-icon-wrap svg {
+      stroke: var(--color-mint);
+      animation: popIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) 0.2s both;
+    }
+
+    @keyframes popIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    .success-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+
+    .success-sub {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 28px;
+      max-width: 280px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+      <nav>
+        <div class="logo" onclick="showView('landing')">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="32" height="32" rx="8" fill="#59B292" />
+            <path d="M10 16H22M10 11H22M10 21H17" stroke="white" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          UCA ( The Ultimate Chat App )
+        </div>
+        <div class="nav-links">
+          <a href="#" onclick="showView('landing')">Features</a>
+          <a href="#" onclick="showView('chat')">App Demo</a>
+          <button class="btn btn-outline" onclick="showView('auth', 'login')">Login</button>
+          <button class="btn btn-primary" onclick="showView('auth', 'signup')">Sign Up</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- View: Landing Page -->
+    <section id="view-landing" class="container">
+      <div class="hero">
+        <div class="hero-text">
+          <h1>Connecting the world, one stitch at a time.</h1>
+          <p>Experience the next generation of communication. Fast, secure, and beautifully designed for the modern
+            creator.</p>
+          <div style="display: flex; gap: 16px;">
+            <button class="btn btn-primary" onclick="showView('auth', 'signup')">Get Started Free</button>
+            <button class="btn btn-outline" onclick="showView('chat')">View Demo</button>
+          </div>
+        </div>
+        <div class="hero-visual">
+          <div class="hero-blob"></div>
+          <div class="hero-card">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+              <div class="avatar" style="width: 40px; height: 40px; background: var(--color-mint); color: white;">A
+              </div>
+              <div>
+                <div style="font-weight: 700; font-size: 14px;">Alex Rivera</div>
+                <div style="font-size: 12px; color: var(--text-secondary);">Online now</div>
+              </div>
+            </div>
+            <p
+              style="font-size: 14px; color: var(--text-secondary); background: #F3F4F6; padding: 12px; border-radius: 12px; margin-bottom: 8px;">
+              "The UI is incredibly smooth. I love the new palette! 🎨"</p>
+            <p
+              style="font-size: 14px; color: white; background: var(--color-mint); padding: 12px; border-radius: 12px; align-self: flex-end; margin-left: 40px;">
+              "Glad you like it! We worked hard on the details."</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="features">
+        <div class="feature-card">
+          <div class="icon-box" style="background: rgba(89, 178, 146, 0.1);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#59B292" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </div>
+          <h3>End-to-End Secure</h3>
+          <p style="color: var(--text-secondary); margin-top: 12px;">Your data is your business. We ensure every message
+            is encrypted from start to finish.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon-box" style="background: rgba(255, 201, 77, 0.1);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFC94D" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" />
+            </svg>
+          </div>
+          <h3>Real-time Sync</h3>
+          <p style="color: var(--text-secondary); margin-top: 12px;">Never miss a beat. Experience lightning-fast
+            message delivery across all your devices.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon-box" style="background: rgba(250, 103, 129, 0.1);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FA6781" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </div>
+          <h3>Premium UI</h3>
+          <p style="color: var(--text-secondary); margin-top: 12px;">A meticulously crafted interface that prioritizes
+            focus, clarity, and aesthetic delight.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Auth Page -->
+    <section id="view-auth" class="hidden">
+      <div class="auth-container">
+        <div id="auth-login">
+          <div class="auth-header">
+            <h2>Welcome back</h2>
+            <p style="color: var(--text-secondary)">Please enter your details to sign in.</p>
+          </div>
+          <form id="login-form" onsubmit="handleLogin(event)">
+            <!-- Login error banner -->
+            <div id="login-error" class="login-error-banner">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              Invalid credentials. Please try again.
+            </div>
+            <div class="input-group">
+              <label>Email Address</label>
+              <input type="email" id="login-email" placeholder="name@company.com" required>
+            </div>
+            <div class="input-group">
+              <label>Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="login-password" placeholder="••••••••" required>
+                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('login-password', this)">Show</button>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Sign In</button>
+          </form>
+          <div class="auth-toggle">
+            Don't have an account? <span onclick="toggleAuth()">Sign up for free</span>
+          </div>
+        </div>
+
+        <div id="auth-signup" class="hidden">
+          <div class="auth-header">
+            <h2>Create account</h2>
+            <p style="color: var(--text-secondary)">Join thousands of creators today.</p>
+          </div>
+          <form id="signup-form" onsubmit="handleSignup(event)">
+            <div class="input-group">
+              <label for="signup-username">Username (Nickname)</label>
+              <input type="text" id="signup-username" placeholder="e.g. design_ninja" required oninput="validateUsername()">
+              <div id="username-validation-msg" class="validation-msg">3–15 chars, letters and numbers only.</div>
+            </div>
+            <div class="input-group">
+              <label for="signup-email">Email Address</label>
+              <input type="email" id="signup-email" placeholder="name@company.com" required>
+            </div>
+            
+            <div class="input-group">
+              <label for="signup-password">Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="signup-password" placeholder="••••••••" required oninput="validateSignup()">
+                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('signup-password', this)">Show</button>
+              </div>
+              <div id="password-validation-msg" class="validation-msg">Must be 8+ chars, alphanumeric, with 1 uppercase.</div>
+            </div>
+
+            <div class="input-group">
+              <label for="signup-confirm">Confirm Password</label>
+              <div class="password-wrapper">
+                <input type="password" id="signup-confirm" placeholder="••••••••" required oninput="validateSignup()">
+                <button type="button" class="toggle-password" onclick="togglePasswordVisibility('signup-confirm', this)">Show</button>
+              </div>
+              <div id="confirm-validation-msg" class="validation-msg"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Create Account</button>
+          </form>
+          <div class="auth-toggle">
+            Already have an account? <span onclick="toggleAuth()">Sign in</span>
+          </div>
+
+          <!-- DT-12: Signup Success Screen -->
+          <div id="signup-success" class="signup-success">
+            <div class="success-icon-wrap">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div class="success-title">Account Created!</div>
+            <div class="success-sub">You're all set. Head to the login page to get into your workspace.</div>
+            <button class="btn btn-primary" onclick="goToLoginAfterSignup()" style="width: 100%;">Go to Login</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- View: Chat App -->
+    <section id="view-chat" class="hidden">
+      <div class="chat-sidebar">
+        <div class="sidebar-header">
+          <h3 style="margin-bottom: 16px;">Messages</h3>
+          <div class="search-bar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" placeholder="Search contacts...">
+          </div>
+        </div>
+        <div class="contact-list">
+          <div class="contact-item active">
+            <div class="avatar" style="background: var(--color-mint); color: white;">JD</div>
+            <div class="contact-info">
+              <h4>Jordan Smith</h4>
+              <p>The design looks amazing!</p>
+            </div>
+            <div style="margin-left: auto; font-size: 11px; color: var(--color-mint); font-weight: 700;">2m</div>
+          </div>
+          <div class="contact-item">
+            <div class="avatar" style="background: var(--color-gold);">SK</div>
+            <div class="contact-info">
+              <h4>Sarah King</h4>
+              <p>Are we still meeting at 5?</p>
+            </div>
+            <div style="margin-left: auto; font-size: 11px; color: var(--text-secondary);">1h</div>
+          </div>
+          <div class="contact-item">
+            <div class="avatar" style="background: var(--color-coral); color: white;">ML</div>
+            <div class="contact-info">
+              <h4>Mike Lee</h4>
+              <p>Check out the new prototype.</p>
+            </div>
+            <div style="margin-left: auto; font-size: 11px; color: var(--text-secondary);">3h</div>
+          </div>
+        </div>
+      </div>
+      <div class="chat-main">
+        <div class="chat-header">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="avatar" style="background: var(--color-mint); color: white; width: 40px; height: 40px;">JD</div>
+            <div>
+              <h4 style="font-size: 16px;">Jordan Smith</h4>
+              <div style="font-size: 12px; color: var(--color-mint); font-weight: 600;">Active Now</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 16px; color: var(--text-secondary);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer">
+              <polygon points="23 7 16 12 23 17 23 7" />
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+            </svg>
+          </div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="message received">Hey! Did you see the latest update?</div>
+          <div class="message received">The new color palette #FAE7CB as background really makes the content pop.</div>
+          <div class="message sent">Yes! I'm actually using it right now. The Mint accents feel very professional.</div>
+          <div class="message received">The design looks amazing!</div>
+        </div>
+        <div class="chat-input-area">
+          <div class="chat-input-wrapper">
+            <input type="text" id="chat-input" placeholder="Type your message here..."
+              onkeypress="handleChatKeyPress(event)">
+          </div>
+          <button class="btn btn-primary" style="padding: 12px; border-radius: 50%;" onclick="sendMessage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Security</a>
+        <a href="#">Contact Us</a>
+      </div>
+      <p style="font-size: 13px; color: rgba(255,255,255,0.4);">© 2026 UCA ( The Ultimate Chat App ) Global Inc. All
+        rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    /**
+     * showView(viewId, authMode)
+     * The main router for this SPA. Hides all views, reveals the target one,
+     * and re-triggers the fadeIn animation so each page feels fresh.
+     * authMode ('login' | 'signup') optionally controls which auth form is shown.
+     */
+    function showView(viewId, authMode = null) {
+      // Hide all views
+      document.getElementById('view-landing').classList.add('hidden');
+      document.getElementById('view-auth').classList.add('hidden');
+      document.getElementById('view-chat').classList.add('hidden');
+
+      // Show requested view
+      const view = document.getElementById('view-' + viewId);
+      view.classList.remove('hidden');
+
+      // Logic to show correct form inside Auth View
+      if (viewId === 'auth' && authMode) {
+        const loginForm = document.getElementById('auth-login');
+        const signupForm = document.getElementById('auth-signup');
+        if (authMode === 'login') {
+          loginForm.classList.remove('hidden');
+          signupForm.classList.add('hidden');
+        } else if (authMode === 'signup') {
+          loginForm.classList.add('hidden');
+          signupForm.classList.remove('hidden');
+        }
+      }
+
+      // Handle header visibility or styles if needed
+      if (viewId === 'chat') {
+        document.querySelector('header').style.padding = '12px 0';
+        document.querySelector('footer').style.display = 'none';
+        // Scroll to bottom of chat
+        setTimeout(scrollToBottom, 100);
+      } else {
+        document.querySelector('header').style.padding = '20px 0';
+        document.querySelector('footer').style.display = 'block';
+      }
+
+      // Simple animation re-trigger
+      view.style.animation = 'none';
+      view.offsetHeight; /* trigger reflow */
+      view.style.animation = 'fadeIn 0.6s ease-out';
+
+      window.scrollTo(0, 0);
+    }
+
+    /**
+     * toggleAuth()
+     * Swaps between the login and signup panels.
+     * Also resets success screen state and clears any lingering error banners.
+     */
+    function toggleAuth() {
+      const loginForm = document.getElementById('auth-login');
+      const signupForm = document.getElementById('auth-signup');
+
+      // Always hide the success screen when toggling
+      const successScreen = document.getElementById('signup-success');
+      if (successScreen) successScreen.classList.remove('visible');
+      const signupFormEl = document.getElementById('signup-form');
+      const toggleEl = signupForm.querySelector('.auth-toggle');
+      if (signupFormEl) signupFormEl.style.display = '';
+      if (toggleEl) toggleEl.style.display = '';
+
+      loginForm.classList.toggle('hidden');
+      signupForm.classList.toggle('hidden');
+
+      // Clear login error on toggle
+      const loginError = document.getElementById('login-error');
+      if (loginError) loginError.classList.remove('visible');
+
+      const activeForm = loginForm.classList.contains('hidden') ? signupForm : loginForm;
+      activeForm.style.animation = 'none';
+      activeForm.offsetHeight;
+      activeForm.style.animation = 'fadeIn 0.4s ease-out';
+    }
+
+    /**
+     * validateUsername() — runs on every keystroke in the username field.
+     * Rule: 3–15 chars, only letters and numbers — no spaces or symbols.
+     * Returns true/false so handleSignup() knows if it's safe to submit.
+     */
+    function validateUsername() {
+      const input = document.getElementById('signup-username');
+      const msg = document.getElementById('username-validation-msg');
+      const val = input.value;
+      const usernameRegex = /^[a-zA-Z0-9]{3,15}$/;
+
+      if (val.length === 0) {
+        msg.className = 'validation-msg';
+        msg.innerText = '3–15 chars, letters and numbers only.';
+        input.classList.remove('input-error');
+        return false;
+      } else if (usernameRegex.test(val)) {
+        msg.className = 'validation-msg success';
+        msg.innerText = 'Username looks great!';
+        input.classList.remove('input-error');
+        return true;
+      } else {
+        msg.className = 'validation-msg error';
+        if (val.length < 3) {
+          msg.innerText = 'Too short — minimum 3 characters.';
+        } else if (val.length > 15) {
+          msg.innerText = 'Too long — maximum 15 characters.';
+        } else {
+          msg.innerText = 'No spaces or special characters allowed.';
+        }
+        input.classList.add('input-error');
+        return false;
+      }
+    }
+
+    /**
+     * handleLogin(event)
+     * Mock login gate — in production, replace the MOCK_EMAIL/MOCK_PASS check
+     * with a real API call (e.g. fetch('/api/login', ...)).
+     * On failure: shows an error banner, highlights both fields, and shakes the form.
+     * Error state auto-clears as soon as the user starts retyping.
+     */
+    function handleLogin(event) {
+      event.preventDefault();
+      const emailInput = document.getElementById('login-email');
+      const passwordInput = document.getElementById('login-password');
+      const errorBanner = document.getElementById('login-error');
+
+      // Simulate a failed login for any submission (mock — replace with real API call)
+      const MOCK_EMAIL = 'user@example.com';
+      const MOCK_PASS = 'Password1';
+
+      if (emailInput.value === MOCK_EMAIL && passwordInput.value === MOCK_PASS) {
+        // Successful mock login
+        errorBanner.classList.remove('visible');
+        emailInput.classList.remove('input-error');
+        passwordInput.classList.remove('input-error');
+        showView('chat');
+      } else {
+        // Failed login — show error state
+        errorBanner.classList.add('visible');
+        emailInput.classList.add('input-error');
+        passwordInput.classList.add('input-error');
+
+        // Shake animation
+        const container = document.getElementById('auth-login');
+        container.style.transition = 'transform 0.1s ease';
+        container.style.transform = 'translateX(-8px)';
+        setTimeout(() => container.style.transform = 'translateX(8px)', 80);
+        setTimeout(() => container.style.transform = 'translateX(0)', 160);
+
+        // Clear error styling on next input
+        [emailInput, passwordInput].forEach(el => {
+          el.addEventListener('input', () => {
+            el.classList.remove('input-error');
+            errorBanner.classList.remove('visible');
+          }, { once: true });
+        });
+      }
+    }
+
+    /**
+     * goToLoginAfterSignup()
+     * Called from the success screen's CTA button.
+     * Resets the signup view back to its original state then switches to login.
+     */
+    function goToLoginAfterSignup() {
+      // Hide success screen, show login
+      const successScreen = document.getElementById('signup-success');
+      const signupFormEl = document.getElementById('signup-form');
+      const toggleEl = document.querySelector('#auth-signup .auth-toggle');
+      successScreen.classList.remove('visible');
+      if (signupFormEl) signupFormEl.style.display = '';
+      if (toggleEl) toggleEl.style.display = '';
+      toggleAuth(); // Switch to login
+    }
+
+    /**
+     * sendMessage()
+     * Grabs whatever's in the input, appends a 'sent' message bubble,
+     * then fires a mock 'received' reply after 1 second to simulate a response.
+     * Wire this up to a WebSocket or API later.
+     */
+    function sendMessage() {
+      const input = document.getElementById('chat-input');
+      const message = input.value.trim();
+      if (message) {
+        const container = document.getElementById('chat-messages');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message sent';
+        msgDiv.textContent = message;
+        msgDiv.style.animation = 'fadeIn 0.3s ease-out';
+        container.appendChild(msgDiv);
+        input.value = '';
+        scrollToBottom();
+
+        // Mock reply
+        setTimeout(() => {
+          const replyDiv = document.createElement('div');
+          replyDiv.className = 'message received';
+          replyDiv.textContent = "That's awesome! Let's keep building.";
+          replyDiv.style.animation = 'fadeIn 0.3s ease-out';
+          container.appendChild(replyDiv);
+          scrollToBottom();
+        }, 1000);
+      }
+    }
+
+    /* Send on Enter key press — feels natural, like any real chat app */
+    function handleChatKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    /* Keeps the chat scrolled to the newest message automatically */
+    function scrollToBottom() {
+      const container = document.getElementById('chat-messages');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    /**
+     * togglePasswordVisibility(inputId, buttonElement)
+     * Toggles a password field between 'password' and 'text' type.
+     * Updates the button label to 'Show' or 'Hide' accordingly.
+     */
+    function togglePasswordVisibility(inputId, buttonElement) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        buttonElement.innerText = 'Hide';
+      } else {
+        input.type = 'password';
+        buttonElement.innerText = 'Show';
+      }
+    }
+
+    /**
+     * validateSignup()
+     * Checks the password field against a regex (8+ chars, 1 uppercase, alphanumeric)
+     * and also confirms the two password fields match.
+     * Called on every keystroke and again on form submit.
+     * Returns true only when both conditions pass.
+     */
+    function validateSignup() {
+      const passwordInput = document.getElementById('signup-password');
+      const confirmInput = document.getElementById('signup-confirm');
+      const pwdMsg = document.getElementById('password-validation-msg');
+      const confirmMsg = document.getElementById('confirm-validation-msg');
+      
+      const pwdValue = passwordInput.value;
+      const confirmValue = confirmInput.value;
+      
+      const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[a-zA-Z]).{8,}$/;
+      let isPwdValid = false;
+      let isMatchValid = false;
+
+      if (pwdValue.length === 0) {
+        pwdMsg.className = 'validation-msg';
+        pwdMsg.innerText = 'Must be 8+ chars, alphanumeric, with 1 uppercase.';
+        passwordInput.classList.remove('input-error');
+      } else if (passwordRegex.test(pwdValue)) {
+        pwdMsg.className = 'validation-msg success';
+        pwdMsg.innerText = 'Strong password.';
+        passwordInput.classList.remove('input-error');
+        isPwdValid = true;
+      } else {
+        pwdMsg.className = 'validation-msg error';
+        pwdMsg.innerText = 'Invalid format. Needs 8+ chars, 1 number, 1 uppercase.';
+        passwordInput.classList.add('input-error');
+      }
+
+      if (confirmValue.length === 0) {
+        confirmMsg.innerText = '';
+        confirmInput.classList.remove('input-error');
+      } else if (pwdValue === confirmValue) {
+        confirmMsg.className = 'validation-msg success';
+        confirmMsg.innerText = 'Passwords match.';
+        confirmInput.classList.remove('input-error');
+        isMatchValid = true;
+      } else {
+        confirmMsg.className = 'validation-msg error';
+        confirmMsg.innerText = 'Passwords do not match.';
+        confirmInput.classList.add('input-error');
+      }
+      
+      return isPwdValid && isMatchValid;
+    }
+
+    /**
+     * handleSignup(event)
+     * Runs all validations (username + password) before letting the form submit.
+     * On success: hides the form and shows the animated success screen.
+     * On failure: shakes the container so the user knows something needs fixing.
+     */
+    function handleSignup(event) {
+      event.preventDefault();
+
+      const isUsernameValid = validateUsername();
+      const isFormValid = validateSignup();
+
+      if (isUsernameValid && isFormValid) {
+        // DT-12: Hide the form, show the success screen
+        const signupFormEl = document.getElementById('signup-form');
+        const toggleEl = document.querySelector('#auth-signup .auth-toggle');
+        const successScreen = document.getElementById('signup-success');
+        const signupHeader = document.querySelector('#auth-signup .auth-header');
+
+        signupFormEl.style.display = 'none';
+        if (toggleEl) toggleEl.style.display = 'none';
+        if (signupHeader) signupHeader.style.display = 'none';
+        successScreen.classList.add('visible');
+      } else {
+        const signupDiv = document.getElementById('auth-signup');
+        signupDiv.style.transition = 'transform 0.1s ease';
+        signupDiv.style.transform = 'translateX(-10px)';
+        setTimeout(() => signupDiv.style.transform = 'translateX(10px)', 100);
+        setTimeout(() => signupDiv.style.transform = 'translateX(0)', 200);
+      }
+    }
+
+    // Start on the landing page when the document loads
+    showView('landing');
+  </script>
+</body>
+
+</html>

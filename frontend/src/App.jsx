@@ -1,35 +1,69 @@
-import { useState } from "react";
-import "./App.css";
+/**
+ * Root Application Router Component
+ * 
+ * Sets up client-side routing with React Router, initiates automatic session authentication
+ * verification on initial mount, and provides protected route gating via PrivateRoute.
+ */
 
-function App() {
-  const [message, setMessage] = useState("");
+import { useEffect } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useAuthStore } from "./store/authStore";
+import LandingPage from "./components/LandingPage";
+import AuthCard from "./components/AuthCard";
+import ChatDashboard from "./components/ChatDashboard";
 
-  async function getMessage() {
-    try {
-      const response = await fetch("http://localhost:8000/api/hello");
-
-      const data = await response.json();
-
-      setMessage(data.message);
-    } catch (error) {
-      setMessage("Could not connect to backend");
-    }
+/**
+ * Route Guard Component
+ * 
+ * Renders child components only when an authenticated user session is active.
+ * Shows a loading indicator while auth is being verified from cookies or redirects to /auth.
+ * 
+ * @param {Object} props - Component props
+ * @param {React.ReactNode} props.children - Protected children to render
+ */
+const PrivateRoute = ({ children }) => {
+  const { user, token, loading } = useAuthStore();
+  
+  if (loading) {
+    return <div className="flex h-screen items-center justify-center bg-cream font-medium text-deepslate-800">Loading...</div>;
   }
+  
+  return token ? children : <Navigate to="/auth" />;
+};
+
+/**
+ * App Root Component
+ * 
+ * Triggers background authentication refresh checks on mount and declares routes.
+ */
+function App() {
+  const { checkAuth } = useAuthStore();
+
+  // Validate authentication state (using stored JWT or HttpOnly cookie refresh) on initial app load
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   return (
-    <div className="container">
-      <h1>My First Web App</h1>
-
-      <p>
-        React frontend + Python backend
-      </p>
-
-      <button onClick={getMessage}>
-        Talk to Python
-      </button>
-
-      {message && <p className="message">{message}</p>}
-    </div>
+    <Router>
+      <Routes>
+        {/* Public landing page */}
+        <Route path="/" element={<LandingPage />} />
+        
+        {/* Public login/register card */}
+        <Route path="/auth" element={<AuthCard />} />
+        
+        {/* Protected chat workspace */}
+        <Route 
+          path="/chat" 
+          element={
+            <PrivateRoute>
+              <ChatDashboard />
+            </PrivateRoute>
+          } 
+        />
+      </Routes>
+    </Router>
   );
 }
 
