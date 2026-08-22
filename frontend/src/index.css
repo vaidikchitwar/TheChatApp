@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -10,18 +11,29 @@
   --color-muted-text: #64748B;
   --color-muted-border: #CBD5E1;
   
-  --font-sans: 'Inter', 'Plus Jakarta Sans', sans-serif;
+  --font-sans: 'Inter', sans-serif;
+  --font-display: 'Outfit', sans-serif;
   
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-soft: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  --shadow-glow: 0 0 20px rgba(89, 178, 146, 0.3);
 }
 
 @layer base {
   body {
     background-color: var(--color-cream);
+    background-image: radial-gradient(at 0% 0%, hsla(158,41%,82%,1) 0, transparent 50%), 
+                      radial-gradient(at 100% 0%, hsla(39,100%,82%,1) 0, transparent 50%), 
+                      radial-gradient(at 100% 100%, hsla(349,94%,85%,1) 0, transparent 50%),
+                      radial-gradient(at 0% 100%, hsla(210,30%,85%,1) 0, transparent 50%);
+    background-attachment: fixed;
     color: var(--color-deepslate-800);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
   }
 }
 

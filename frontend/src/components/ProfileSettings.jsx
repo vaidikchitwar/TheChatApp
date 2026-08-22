@@ -96,21 +96,21 @@ export default function ProfileSettings({ onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-deepslate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-6 border-b border-muted-border flex justify-between items-center bg-cream/30">
-          <h2 className="text-xl font-bold text-deepslate-900">Profile Settings</h2>
-          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full transition-colors">
-            <X size={20} className="text-muted-text" />
+    <div className="fixed inset-0 bg-deepslate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-white/80 backdrop-blur-2xl rounded-3xl shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/60 w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-6 border-b border-white/40 flex justify-between items-center bg-white/50 backdrop-blur-md">
+          <h2 className="text-2xl font-bold text-deepslate-900 tracking-tight">Profile Settings</h2>
+          <button onClick={onClose} className="p-2 bg-white/50 hover:bg-white/80 rounded-full transition-all shadow-sm border border-white/60">
+            <X size={20} className="text-deepslate-900" />
           </button>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-transparent">
           {/* Avatar Section */}
           <div className="flex flex-col items-center mb-8">
             <div className="relative group">
               <div 
-                className="w-24 h-24 rounded-full flex items-center justify-center font-bold text-3xl text-white shadow-md overflow-hidden bg-cover bg-center"
+                className="w-28 h-28 rounded-full flex items-center justify-center font-bold text-4xl text-white shadow-lg overflow-hidden bg-cover bg-center ring-4 ring-white"
                 style={{
                   backgroundColor: user?.avatar_color,
                   backgroundImage: user?.avatar_url ? `url(http://localhost:8000${user.avatar_url})` : 'none'
@@ -125,9 +125,9 @@ export default function ProfileSettings({ onClose }) {
                 className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-100"
               >
                 {isUploadingAvatar ? (
-                  <Loader2 size={24} className="text-white animate-spin" />
+                  <Loader2 size={28} className="text-white animate-spin" />
                 ) : (
-                  <Upload size={24} className="text-white" />
+                  <Upload size={28} className="text-white" />
                 )}
               </button>
               <input 
@@ -138,51 +138,51 @@ export default function ProfileSettings({ onClose }) {
                 className="hidden" 
               />
             </div>
-            <p className="text-sm text-muted-text mt-3">Click to upload new avatar</p>
+            <p className="text-sm font-medium text-muted-text mt-4 bg-white/50 px-4 py-1.5 rounded-full border border-white/60 shadow-sm">Click to upload new avatar</p>
           </div>
 
           {/* Profile Form */}
-          <form onSubmit={handleUpdateProfile} className="space-y-4 mb-10">
-            <h3 className="text-lg font-semibold text-deepslate-900 border-b border-muted-border pb-2">Public Profile</h3>
+          <form onSubmit={handleUpdateProfile} className="space-y-5 mb-10">
+            <h3 className="text-lg font-bold text-deepslate-900 border-b border-white/50 pb-2">Public Profile</h3>
             
             <div>
-              <label className="block text-sm font-medium text-deepslate-800 mb-1">Display Name</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Display Name</label>
               <input 
                 type="text" 
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
-                className="w-full bg-white border border-muted-border rounded-xl px-4 py-2.5 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-deepslate-800 mb-1">Status Message</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Status Message</label>
               <input 
                 type="text" 
                 value={statusMessage}
                 onChange={(e) => setStatusMessage(e.target.value)}
                 placeholder="e.g. At work, Sleeping, Available"
-                className="w-full bg-white border border-muted-border rounded-xl px-4 py-2.5 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-deepslate-800 mb-1">Bio</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Bio</label>
               <textarea 
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="Tell others about yourself..."
                 rows={3}
-                className="w-full bg-white border border-muted-border rounded-xl px-4 py-2.5 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all resize-none"
+                className="w-full bg-white/60 border border-white/50 shadow-inner rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all resize-none font-medium text-deepslate-900 placeholder:text-muted-text/70"
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <button 
                 type="submit"
                 disabled={isUpdating}
-                className="bg-mint text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-mint/90 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                className="bg-gradient-to-r from-mint to-teal-500 text-white px-8 py-3 rounded-xl font-bold hover:shadow-lg hover:shadow-mint/20 hover:-translate-y-0.5 transition-all shadow-md disabled:opacity-50 disabled:hover:translate-y-0 flex items-center gap-2"
               >
                 {isUpdating ? <Loader2 size={18} className="animate-spin" /> : 
                  updateSuccess ? <Check size={18} /> : "Save Profile"}
@@ -191,48 +191,48 @@ export default function ProfileSettings({ onClose }) {
           </form>
 
           {/* Security Form */}
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            <h3 className="text-lg font-semibold text-deepslate-900 border-b border-muted-border pb-2">Security</h3>
+          <form onSubmit={handleChangePassword} className="space-y-5">
+            <h3 className="text-lg font-bold text-deepslate-900 border-b border-white/50 pb-2">Security</h3>
             
             {passwordError && (
-              <div className="p-3 bg-coral/10 border border-coral text-coral rounded-xl text-sm">
+              <div className="p-4 bg-coral/10 border border-coral/20 text-coral rounded-xl text-sm font-bold shadow-sm">
                 {passwordError}
               </div>
             )}
             {passwordSuccess && (
-              <div className="p-3 bg-mint/10 border border-mint text-mint rounded-xl text-sm">
+              <div className="p-4 bg-mint/10 border border-mint/20 text-mint rounded-xl text-sm font-bold shadow-sm">
                 {passwordSuccess}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-deepslate-800 mb-1">Current Password</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Current Password</label>
               <input 
                 type="password" 
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
-                className="w-full bg-white border border-muted-border rounded-xl px-4 py-2.5 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-deepslate-800 mb-1">New Password</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">New Password</label>
               <input 
                 type="password" 
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Min 8 chars, 1 uppercase"
-                className="w-full bg-white border border-muted-border rounded-xl px-4 py-2.5 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                 required
               />
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-2">
               <button 
                 type="submit"
                 disabled={isChangingPassword || !currentPassword || !newPassword}
-                className="bg-deepslate-900 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-deepslate-800 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+                className="bg-deepslate-900 text-white px-8 py-3 rounded-xl font-bold hover:bg-deepslate-800 transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center gap-2"
               >
                 {isChangingPassword ? <Loader2 size={18} className="animate-spin" /> : "Update Password"}
               </button>
@@ -240,23 +240,23 @@ export default function ProfileSettings({ onClose }) {
           </form>
 
           {/* Blocked Users Form */}
-          <div className="mt-8 space-y-4">
-            <h3 className="text-lg font-semibold text-deepslate-900 border-b border-muted-border pb-2">Blocked Users</h3>
+          <div className="mt-10 space-y-4">
+            <h3 className="text-lg font-bold text-deepslate-900 border-b border-white/50 pb-2">Blocked Users</h3>
             {blockedUsers.length === 0 ? (
-              <p className="text-sm text-muted-text">You haven't blocked anyone.</p>
+              <p className="text-sm font-medium text-muted-text bg-white/40 p-4 rounded-xl border border-white/50 text-center">You haven't blocked anyone.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {blockedUsers.map(b => (
-                  <div key={b.id} className="flex items-center justify-between p-3 border border-muted-border rounded-xl">
+                  <div key={b.id} className="flex items-center justify-between p-4 bg-white/50 border border-white/60 shadow-sm rounded-2xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-deepslate-900 flex items-center justify-center text-white text-xs font-bold" style={{backgroundColor: b.friend.avatar_color}}>
+                      <div className="w-10 h-10 rounded-full bg-deepslate-900 flex items-center justify-center text-white text-sm font-bold shadow-sm" style={{backgroundColor: b.friend.avatar_color}}>
                         {b.friend.nickname.charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium text-deepslate-900">{b.friend.nickname}</span>
+                      <span className="font-bold text-deepslate-900">{b.friend.nickname}</span>
                     </div>
                     <button 
                       onClick={() => handleUnblock(b.friend.id)}
-                      className="text-xs bg-muted-border text-deepslate-900 px-3 py-1.5 rounded hover:bg-cream transition-colors"
+                      className="text-xs font-bold bg-white border border-white/60 text-deepslate-900 px-4 py-2 rounded-xl hover:bg-white/80 transition-all shadow-sm hover:shadow-md"
                     >
                       Unblock
                     </button>

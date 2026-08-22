@@ -119,20 +119,21 @@ export default function AuthCard() {
   };
 
   return (
-    <div className="min-h-screen bg-cream flex items-center justify-center p-4 font-sans">
-      <div className="bg-white w-full max-w-md p-8 sm:p-10 rounded-[2rem] shadow-xl border border-black/5 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4 font-sans relative">
+      <div className="bg-white/70 backdrop-blur-3xl w-full max-w-md p-8 sm:p-10 rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-white/60 relative overflow-hidden">
         {/* Decorative corner accent */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-mint/10 rounded-bl-full -z-0"></div>
+        <div className="absolute top-0 right-0 w-40 h-40 bg-mint/20 blur-3xl rounded-full -z-0 translate-x-10 -translate-y-10"></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-golden/20 blur-3xl rounded-full -z-0 -translate-x-10 translate-y-10"></div>
 
         {/* Card Header */}
-        <div className="relative z-10 flex flex-col items-center mb-8">
-          <div className="bg-mint p-3 rounded-2xl text-white mb-4 shadow-lg shadow-mint/30">
-            <MessageCircle size={28} />
+        <div className="relative z-10 flex flex-col items-center mb-10">
+          <div className="bg-gradient-to-br from-mint to-teal-500 p-4 rounded-2xl text-white mb-5 shadow-lg shadow-mint/30 ring-4 ring-white/50">
+            <MessageCircle size={32} />
           </div>
           <h2 className="text-3xl font-bold text-deepslate-900 tracking-tight">
             {isSignUp ? "Create an Account" : "Welcome Back"}
           </h2>
-          <p className="text-muted-text mt-2 text-center">
+          <p className="text-muted-text mt-2 text-center font-medium">
             {isSignUp ? "Join the conversation in seconds." : "Enter your details to access your chats."}
           </p>
         </div>
@@ -141,7 +142,7 @@ export default function AuthCard() {
         <form onSubmit={handleSubmit} className="relative z-10 flex flex-col gap-5">
           {/* Dynamic Error Alert Banner */}
           {error && (
-            <div className="bg-coral/10 text-coral p-3 rounded-xl flex items-start gap-2 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+            <div className="bg-coral/10 border border-coral/20 text-coral p-3 rounded-xl flex items-start gap-2 text-sm font-bold animate-in fade-in slide-in-from-top-2">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -151,37 +152,37 @@ export default function AuthCard() {
           {isSignUp && (
             <>
               <div>
-                <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Username</label>
+                <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Username</label>
                 <input
                   type="text"
                   name="username"
                   required
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all"
+                  className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                   placeholder="johndoe"
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Nickname</label>
+                <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Nickname</label>
                 <input
                   type="text"
                   name="nickname"
                   value={formData.nickname}
                   onChange={handleChange}
-                  className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all"
+                  className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                   placeholder="John D."
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Email</label>
+                <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Email</label>
                 <input
                   type="email"
                   name="email"
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all"
+                  className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                   placeholder="john@example.com"
                 />
               </div>
@@ -191,14 +192,14 @@ export default function AuthCard() {
           {/* Sign-In Field (Username or Email) */}
           {!isSignUp && (
             <div>
-              <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Username or Email</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Username or Email</label>
               <input
                 type="text"
                 name="username"
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                 placeholder="johndoe"
               />
             </div>
@@ -206,7 +207,7 @@ export default function AuthCard() {
 
           {/* Password Field with Show/Hide Toggle */}
           <div>
-            <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Password</label>
+            <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -214,7 +215,7 @@ export default function AuthCard() {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all pr-12"
+                className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70 pr-12"
                 placeholder="••••••••"
               />
               <button
@@ -231,14 +232,14 @@ export default function AuthCard() {
           {/* Confirm Password Field (Sign Up only) */}
           {isSignUp && (
             <div>
-              <label className="block text-sm font-semibold text-deepslate-800 mb-1.5 ml-1">Confirm Password</label>
+              <label className="block text-sm font-bold text-deepslate-800 mb-1.5 ml-1">Confirm Password</label>
               <input
                 type={showPassword ? "text" : "password"}
                 name="confirmPassword"
                 required
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full bg-cream/30 border border-muted-border px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-mint focus:border-transparent transition-all"
+                className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
                 placeholder="••••••••"
               />
             </div>
@@ -248,20 +249,20 @@ export default function AuthCard() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-mint hover:bg-mint/90 text-white font-bold py-3.5 px-4 rounded-xl mt-4 shadow-lg shadow-mint/20 hover:shadow-xl hover:-translate-y-0.5 transition-all disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full bg-gradient-to-r from-mint to-teal-500 hover:from-teal-500 hover:to-mint text-white font-bold py-4 px-4 rounded-xl mt-6 shadow-lg shadow-mint/20 hover:shadow-mint/40 hover:-translate-y-1 transition-all disabled:opacity-70 disabled:hover:translate-y-0 disabled:cursor-not-allowed flex items-center justify-center text-lg tracking-wide"
           >
-            {isLoading ? <Loader2 className="animate-spin" size={20} /> : isSignUp ? "Create Account" : "Sign In"}
+            {isLoading ? <Loader2 className="animate-spin" size={24} /> : isSignUp ? "Create Account" : "Sign In"}
           </button>
         </form>
 
         {/* Toggle Mode Switcher */}
-        <div className="mt-8 text-center relative z-10">
+        <div className="mt-8 text-center relative z-10 pt-6 border-t border-white/40">
           <button
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError(null);
             }}
-            className="text-muted-text hover:text-deepslate-900 text-sm font-medium transition-colors"
+            className="text-muted-text hover:text-deepslate-900 text-sm font-bold transition-colors"
           >
             {isSignUp ? "Already have an account? Log in" : "Don't have an account? Sign up"}
           </button>

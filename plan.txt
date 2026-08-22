@@ -1,0 +1,275 @@
+Advanced Chat Application Production Architecture & Implementation Plan
+React + TypeScript • FastAPI • PostgreSQL • Redis • WebSockets • S3-compatible Storage
+This document transforms the original feature roadmap into a production-oriented technical plan. It focuses on architecture, data modelling, API and WebSocket contracts, security, scalability, frontend state management, testing, deployment, and phased delivery.
+1. Executive Summary
+The application should evolve from a basic 1-to-1 text chat into a reliable multi-user messaging platform with group conversations, rich media, reactions, replies, presence, notifications, search, and production-grade security and observability.
+The recommended architecture is a modular monolith rather than premature microservices. PostgreSQL should be the durable source of truth, Redis should handle ephemeral and distributed state, object storage should own binary media, and WebSockets should deliver real-time events rather than act as the persistence layer.
+2. Recommended Architecture
+Real-time delivery mechanics: each FastAPI instance maintains the WebSocket connections attached to that instance. When an event is committed and published, Redis Pub/Sub distributes it to other application instances. Each instance forwards the event only to the local sockets subscribed to the relevant conversation/user. A production deployment can use either load-balancer sticky sessions or a Redis connection registry such as user_id -> instance_id; the latter is preferable when targeted routing is important.
+Delivery semantics: Redis Pub/Sub is at-most-once and does not provide a durable replay log or a global ordering guarantee across publishers. Therefore WebSocket delivery is best-effort. Every event should carry an event_id; clients should de-duplicate already-seen event IDs and reconcile state from REST after reconnect. PostgreSQL remains the authoritative source of durable message state.
+Recommended flow: React client → HTTPS/WebSocket → FastAPI → PostgreSQL / Redis / Object Storage, with background workers for notifications and media processing.
+Frontend: React + TypeScript, Zustand, TanStack Query, WebSocket event dispatcher.
+Backend: FastAPI, SQLAlchemy 2, Alembic, modular service/repository structure.
+Database: PostgreSQL for users, conversations, participants, messages, reactions, friendships and metadata.
+Redis: presence, typing indicators, rate limiting, caching and WebSocket pub/sub.
+Object storage: S3-compatible storage for images, videos, documents, voice notes and avatars.
+Background workers: asynchronous push notifications, media processing, cleanup and other non-critical jobs.
+Deployment: Docker, reverse proxy/load balancer, CI/CD and observability.
+3. Core Architectural Principles
+PostgreSQL owns durable business state. Messages, users, memberships and permissions must survive process restarts.
+Redis owns temporary/distributed state. Presence, typing indicators, rate limits and cross-instance pub/sub should not create unnecessary database writes.
+Object storage owns binary files. Large uploads should bypass FastAPI through signed upload URLs.
+WebSockets deliver events. A WebSocket is a real-time transport, not the durable source of truth.
+Clients maintain a view of server state. React should reconcile REST data and WebSocket events.
+Design for retries. Message creation must be idempotent so network retries cannot create duplicates.
+Prefer a modular monolith initially. Separate domains cleanly without introducing microservices before scale requires them.
+4. Database Design
+users
+id, username, email, password_hash, display_name, avatar_url, bio, status, last_seen_at, created_at, updated_at
+conversations
+id, type (DIRECT/GROUP), name, description, avatar_url, created_by, created_at, updated_at
+conversation_participants
+id, conversation_id, user_id, role (OWNER/ADMIN/MEMBER), joined_at, left_at, last_read_message_id, muted_until, notifications_enabled, created_at, updated_at
+messages
+id, conversation_id, sender_id, reply_to_id, type (TEXT/IMAGE/VIDEO/AUDIO/FILE/SYSTEM), content, edited_at, deleted_at, created_at, updated_at
+message_attachments
+id, message_id, storage_key, original_filename, mime_type, file_size, width, height, duration, thumbnail_key, checksum, created_at
+message_reactions
+id, message_id, user_id, emoji, created_at
+friend_requests
+id, sender_id, receiver_id, status, created_at, responded_at
+user_blocks
+blocker_id, blocked_id, created_at
+message_edits
+id, message_id, previous_content, edited_by, edited_at
+reports
+id, reporter_id, reported_user_id, message_id, reason, status, created_at
+Important constraints: enforce unique active conversation membership, unique reactions per user/message/emoji, and unique sender/client_message_id pairs for idempotent message creation. Do not store a denormalized conversations.[removed: resolve latest message via indexed query]: the latest message should be resolved through an index on (conversation_id, created_at DESC). This avoids a circular foreign-key dependency and prevents every new message from becoming a write hotspot on the conversation row.
+5. Conversations and Group Model
+Use one generalized Conversation model for both direct and group chats. Avoid separate messaging engines for groups and direct messages. ConversationParticipant stores membership, role, read cursor and notification settings.
+DIRECT conversation: exactly two active participants.
+GROUP conversation: multiple participants with OWNER, ADMIN or MEMBER roles.
+System messages represent joins, leaves, additions, removals and relevant group changes.
+Leaving a group should preserve historical messages while marking the participant as inactive.
+6. Message Architecture
+Support TEXT, IMAGE, VIDEO, AUDIO, FILE and SYSTEM message types.
+Use reply_to_id for message replies.
+Use edited_at rather than only a boolean where possible.
+Use deleted_at/deleted_by for soft deletion and render a deletion tombstone.
+Store attachments separately so one message can contain multiple files.
+Use client_message_id for safe retries and idempotent message creation.
+7. Real-Time WebSocket Protocol
+WebSocket authentication: the browser WebSocket API does not provide the same arbitrary Authorization-header flow as normal fetch requests. Prefer a short-lived WebSocket-specific token supplied through Sec-WebSocket-Protocol or a tightly scoped handshake mechanism. Avoid placing long-lived JWTs in query strings because URLs can leak into proxy/access logs. The server must authenticate the socket before accepting application messages and close unauthorized connections with an appropriate WebSocket close code.
+Subscription and routing model: after authentication, the connection is authorized against the user's conversations. The instance tracks local subscriptions, while Redis Pub/Sub distributes conversation/user events across instances. A Redis connection registry can be used for direct user targeting when a specific user may have multiple active sessions.
+Reconnect model: clients should reconnect with exponential backoff, refresh authentication as needed, deduplicate events using event_id, and re-fetch conversation state/messages through REST. The reconnect path is a reconciliation mechanism, not an assumption that WebSocket delivery was lossless.
+Use a versioned event envelope with event name, event ID, conversation ID, timestamp and event-specific data.
+Example event envelope:
+{"event":"MESSAGE_CREATED","event_id":"evt_123","conversation_id":"conv_456","timestamp":"2026-08-21T10:30:00Z","data":{"message":{}}}
+Initial event catalogue:
+MESSAGE_CREATED
+MESSAGE_UPDATED
+MESSAGE_DELETED
+REACTION_ADDED
+REACTION_REMOVED
+TYPING_STARTED
+TYPING_STOPPED
+USER_ONLINE
+USER_OFFLINE
+MESSAGE_DELIVERED
+MESSAGE_READ
+PARTICIPANT_ADDED
+PARTICIPANT_REMOVED
+PARTICIPANT_LEFT
+CONVERSATION_UPDATED
+8. Idempotency and Reliability
+A production chat client will retry requests when networks fail. Message creation must therefore be idempotent. The client generates a client_message_id, the server stores it with the sender, and a unique constraint prevents duplicate messages.
+Recommended message flow: client → WebSocket/API → validate → authorize → PostgreSQL transaction → commit → publish event → Redis → connected WebSocket instances → clients.
+9. API Design
+User and social graph endpoints:
+GET /api/v1/users/search?q=<query>
+GET /api/v1/users/{id}
+POST /api/v1/friend-requests
+GET /api/v1/friend-requests
+POST /api/v1/friend-requests/{id}/accept
+POST /api/v1/friend-requests/{id}/reject
+DELETE /api/v1/friendships/{user_id}
+POST /api/v1/users/{id}/block
+DELETE /api/v1/users/{id}/block
+POST /api/v1/reports
+GET /api/v1/conversations/{id}/search?q=<query>
+A direct-conversation creation must check user_blocks before creating or reopening a conversation. Blocking is a creation-time authorization rule, not merely a notification-suppression rule.
+POST /api/v1/conversations
+GET /api/v1/conversations
+GET /api/v1/conversations/{id}
+POST /api/v1/conversations/{id}/participants
+DELETE /api/v1/conversations/{id}/participants/{user_id}
+POST /api/v1/conversations/{id}/leave
+PATCH /api/v1/conversations/{id}
+GET /api/v1/conversations/{id}/messages?before=<message_id>&limit=50
+POST /api/v1/conversations/{id}/messages
+PATCH /api/v1/messages/{id}
+DELETE /api/v1/messages/{id}
+POST /api/v1/messages/{id}/reactions
+DELETE /api/v1/messages/{id}/reactions/{emoji}
+POST /api/v1/uploads/presign
+Use cursor-based pagination for message history rather than deep page-number pagination.
+10. File and Media Storage
+Do not stream large files through FastAPI in production. The preferred flow is: client requests a presigned upload URL → FastAPI authorizes and generates it → client uploads directly to object storage → message references the attachment.
+Development: local storage can be supported behind a storage abstraction.
+Production: S3-compatible object storage.
+Use private objects and signed download URLs.
+Validate file size, MIME type, extension and actual content.
+Sanitize filenames and consider malware scanning.
+Generate thumbnails and media metadata asynchronously.
+11. Authentication and Authorization
+Refresh-token storage: for a browser application, prefer a Secure, HttpOnly, SameSite cookie for refresh tokens so JavaScript cannot directly read the token. Keep access tokens short-lived and use the server to rotate/revoke refresh tokens. The exact SameSite/CSRF strategy should match the deployment topology and frontend/backend origins.
+Registration and login.
+Short-lived access tokens and rotating refresh tokens where appropriate.
+Password reset and optional email verification.
+Session/token revocation.
+Conversation membership checks on every protected operation.
+Group role checks for OWNER/ADMIN-only operations.
+Resource ownership checks before editing or deleting content.
+12. Presence, Typing and Read State
+Presence and typing are ephemeral. Use Redis TTLs and WebSockets rather than writing every heartbeat to PostgreSQL.
+Presence key: presence:user:{id} with a short TTL.
+Client heartbeat refreshes the TTL.
+Typing events are transient and should not be persisted.
+Conversation participants store last_read_message_id for efficient unread counts.
+Per-user message receipts can be added later if group-scale requirements justify the storage cost.
+13. Frontend Architecture
+React + TypeScript.
+Zustand for client/application state.
+TanStack Query for REST/server state and caching.
+Dedicated WebSocket connection manager and event dispatcher.
+Optimistic message rendering with SENDING, SENT, DELIVERED, READ and FAILED states.
+Virtualized message lists for large histories.
+Context menus for reply, edit, delete and react.
+Media preview/lightbox and upload progress.
+14. Performance and Scalability
+Cursor-based message pagination.
+Virtualized message rendering.
+PostgreSQL indexes on conversation/message and participant relationships.
+Redis caching where it provides measurable benefit.
+Redis pub/sub for horizontally scaled WebSocket servers.
+Direct-to-object-storage uploads.
+Background processing for notifications and media.
+Load testing at increasing concurrent connection levels.
+15. Search
+Start with PostgreSQL Full Text Search. Do not introduce Elasticsearch/OpenSearch until actual scale or search requirements justify another system.
+16. Notifications
+Notifications should be asynchronous. After a message is committed, enqueue notification work rather than delaying the message response.
+Web Push for supported web clients.
+Notification preferences per conversation.
+Offline notification handling.
+Retry failed notification jobs.
+Do not send notifications for muted conversations or blocked users.
+17. Security and Abuse Protection
+Password hashing and secure credential handling
+Rate limiting for login, messaging, friend requests and uploads
+Request validation and payload-size limits
+CORS and security-header configuration
+Conversation and role-based authorization
+Private object storage and signed URLs
+MIME/content verification
+Malware scanning for uploaded files
+Block, mute and report mechanisms
+Audit logging for sensitive administrative operations
+18. Testing Strategy
+Unit tests: Message service, permission service, friendship service, reaction service, upload validation.
+Integration tests: FastAPI + PostgreSQL, Redis, authentication, transactions and persistence.
+WebSocket tests: Connect/disconnect, reconnect, duplicate events, multi-client delivery, group broadcast and offline users.
+End-to-end tests: Playwright scenarios across multiple users and browser sessions.
+Load tests: Concurrent connections, message throughput, p95/p99 latency, CPU, RAM, DB connections and Redis usage.
+Failure testing: Redis restart, database interruption, client refresh, network loss, duplicate sends, upload interruption and process crashes.
+19. Observability
+Disaster recovery and operational readiness: monitor backup success, database replication/availability where applicable, worker queue health, Redis health, object-storage failures and WebSocket connection churn. Document rollback, restore and incident procedures before the first public release.
+Structured JSON logs with timestamp, request ID, user ID, route, status and latency.
+Metrics for WebSocket connections, messages/second, API latency, DB latency, Redis latency and failed uploads.
+Error tracking such as Sentry.
+Health and readiness endpoints.
+Alerts for database errors, elevated latency and worker failures.
+20. Backend Project Structure
+backend/ ├── app/ │   ├── main.py │   ├── api/v1/ │   │   ├── auth.py │   │   ├── users.py │   │   ├── conversations.py │   │   ├── messages.py │   │   ├── uploads.py │   │   └── notifications.py │   ├── websocket/ │   │   ├── manager.py │   │   ├── events.py │   │   └── handlers.py │   ├── models/ │   ├── schemas/ │   ├── services/ │   ├── repositories/ │   ├── workers/ │   ├── core/ │   └── db/ │       ├── session.py │       └── migrations/ └── tests/
+21. Delivery Roadmap
+Phase 0 — Foundation: PostgreSQL, Alembic, Redis, Docker, environment configuration, authentication, authorization, WebSocket protocol, logging, testing and CI.
+Phase 1 — Core Messaging: Direct conversations, message history, WebSockets, reconnect handling, optimistic UI, unread counts, read state, typing and presence.
+Phase 2 — Groups: Group creation, avatars, descriptions, member management, roles, admin permissions, leaving and system messages.
+Phase 3 — Rich Messages: Images, documents, video, audio, voice notes, attachments, replies, reactions, editing, deletion and previews.
+Phase 4 — Social Layer: User search, friend requests, contacts, blocking, muting, reporting, profiles, statuses and privacy controls.
+Phase 5 — Performance: Virtualization, cursor pagination, indexing, caching, CDN, object storage and background workers.
+Phase 6 — Notifications & Search: Web Push, notification preferences, offline notifications and PostgreSQL full-text search.
+Phase 7 — Production Hardening: Rate limiting, abuse prevention, upload scanning, observability, backups, disaster recovery, load testing and security testing.
+22. Recommended Technology Stack
+Layer
+Recommendation
+Frontend
+React + TypeScript
+UI
+Tailwind CSS
+Client state
+Zustand
+Server state
+TanStack Query
+Real-time
+WebSocket
+Backend
+FastAPI
+ORM
+SQLAlchemy 2 Async + asyncpg
+Database
+PostgreSQL (async access via asyncpg)
+Migrations
+Alembic
+Cache / Pub/Sub
+Redis
+Background jobs
+Arq + Redis
+Object storage
+S3-compatible
+Testing
+Pytest + Vitest + Playwright
+Load testing
+k6
+Containers
+Docker
+CI/CD
+GitHub Actions
+Monitoring
+Sentry + metrics
+Search
+PostgreSQL Full Text Search initially
+23. Features to Defer
+End-to-end encryption
+Voice/video calling
+Kafka
+Elasticsearch/OpenSearch
+Kubernetes
+Microservices
+Multi-region infrastructure
+Advanced AI moderation
+Complex recommendation systems
+These can be introduced later when product requirements, scale or compliance requirements justify their operational complexity.
+24. Migration and Execution Strategy
+Inspect the existing models, SQLite schema, FastAPI routes, WebSocket implementation and React state architecture.
+Define the target PostgreSQL schema and migration mapping.
+Introduce Alembic and migrate existing data without destructive resets.
+Introduce Redis behind an abstraction for presence, pub/sub and rate limiting.
+Refactor the backend into domain-oriented services without changing user-facing behaviour first.
+Introduce the versioned WebSocket event envelope and idempotent message handling.
+Move media handling to an object-storage abstraction and presigned uploads.
+Implement features phase by phase with automated regression coverage.
+Run integration, E2E and load tests before production deployment.
+Deploy through staging and CI/CD with observability and rollback procedures.
+26. Final Recommendation
+25. V2 Architecture Decisions
+WebSocket transport is explicitly best-effort; REST reconciliation is the recovery mechanism.
+Redis Pub/Sub is used for cross-instance fan-out, not for durable message storage.
+WebSocket instances authenticate before subscription and use scoped, short-lived credentials.
+The conversations table does not store last_message_id; latest-message lookup uses an index on (conversation_id, created_at DESC).
+FastAPI uses SQLAlchemy AsyncSession with asyncpg; Arq handles asynchronous jobs.
+Direct-chat creation checks blocks before creating/reopening a conversation.
+Refresh tokens are intended for Secure, HttpOnly cookie storage in browser deployments.
+Initial recovery targets are RPO <= 15 minutes and RTO <= 1 hour, subject to business requirements.
+The original plan is a strong feature roadmap, but it should not be treated as the implementation specification. The production version should be built around PostgreSQL, Redis, object storage, an explicit WebSocket event protocol, idempotent message operations, cursor pagination, proper authorization, optimistic frontend state, background jobs, automated testing, observability and CI/CD.
+Most importantly, the existing codebase should be inspected before implementation begins. The first engineering deliverable should be a migration-safe target architecture and sequence of changes based on the actual current models, API routes, WebSocket implementation and React state structure.

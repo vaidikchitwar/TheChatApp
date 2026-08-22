@@ -220,15 +220,15 @@ export default function ChatDashboard() {
   if (!user) return null;
 
   return (
-    <div className="flex h-screen bg-cream p-4 gap-4 font-sans">
+    <div className="flex h-screen p-4 gap-4 font-sans bg-transparent">
       
       {/* Left Sidebar */}
-      <div className="w-80 bg-white rounded-3xl shadow-soft border border-black/5 flex flex-col overflow-hidden shrink-0">
+      <div className="w-80 bg-white/70 backdrop-blur-2xl rounded-3xl shadow-soft border border-white/60 flex flex-col overflow-hidden shrink-0">
         {/* User Profile Bar & Logout Button */}
-        <div className="p-5 border-b border-muted-border bg-deepslate-900 text-white flex justify-between items-center">
+        <div className="p-5 border-b border-white/40 bg-white/40 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div 
-              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner bg-cover bg-center" 
+              className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-white shadow-md bg-cover bg-center ring-2 ring-white" 
               style={{
                 backgroundColor: user?.avatar_color,
                 backgroundImage: user?.avatar_url ? `url(http://localhost:8000${user.avatar_url})` : 'none'
@@ -237,17 +237,17 @@ export default function ChatDashboard() {
               {!user?.avatar_url && user?.nickname?.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h3 className="font-bold">{user?.nickname}</h3>
-              <div className="flex items-center gap-1.5 text-xs text-mint">
-                <span className="w-2 h-2 bg-mint rounded-full animate-pulse"></span> Online
+              <h3 className="font-bold text-deepslate-900 leading-tight">{user?.nickname}</h3>
+              <div className="flex items-center gap-1.5 text-xs font-medium text-mint">
+                <span className="w-2 h-2 bg-mint rounded-full animate-pulse shadow-[0_0_8px_rgba(89,178,146,0.6)]"></span> Online
               </div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Settings">
+            <button onClick={() => setShowSettings(true)} className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all" title="Settings">
               <Settings size={18} />
             </button>
-            <button onClick={logout} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Logout">
+            <button onClick={logout} className="p-2 text-muted-text hover:text-coral hover:bg-white/60 rounded-xl transition-all" title="Logout">
               <LogOut size={18} />
             </button>
           </div>
@@ -256,33 +256,33 @@ export default function ChatDashboard() {
         {showSettings && <ProfileSettings onClose={() => setShowSettings(false)} />}
 
         <div className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-text" size={18} />
+          <div className="relative group">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-text transition-colors group-focus-within:text-mint" size={18} />
             <input 
               type="text" 
               placeholder="Search users..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-cream/50 border border-muted-border rounded-xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+              className="w-full bg-white/60 border border-white/50 shadow-sm rounded-2xl py-2.5 pl-10 pr-4 focus:outline-none focus:border-mint/50 focus:ring-2 focus:ring-mint/20 transition-all text-deepslate-900 placeholder:text-muted-text"
             />
           </div>
         </div>
 
-        <div className="flex border-b border-muted-border mt-1">
+        <div className="flex border-b border-white/40 mt-1 px-4 gap-2">
           <button 
-            className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'chats' ? 'border-mint text-mint' : 'border-transparent text-muted-text hover:text-deepslate-900'}`}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-t-xl ${activeTab === 'chats' ? 'bg-white/60 text-mint shadow-sm' : 'text-muted-text hover:text-deepslate-900 hover:bg-white/40'}`}
             onClick={() => setActiveTab('chats')}
           >
             Chats
           </button>
           <button 
-            className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex justify-center items-center gap-2 ${activeTab === 'friends' ? 'border-mint text-mint' : 'border-transparent text-muted-text hover:text-deepslate-900'}`}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-all rounded-t-xl flex justify-center items-center gap-2 ${activeTab === 'friends' ? 'bg-white/60 text-mint shadow-sm' : 'text-muted-text hover:text-deepslate-900 hover:bg-white/40'}`}
             onClick={() => setActiveTab('friends')}
           >
             Friends
-            {pendingRequests.filter(r => r.friend.id === user.id).length > 0 && (
-              <span className="bg-coral text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                {pendingRequests.filter(r => r.friend.id === user.id).length}
+            {pendingRequests.filter(r => r.user_id !== user.id).length > 0 && (
+              <span className="bg-coral text-white text-[10px] px-1.5 py-0.5 rounded-full shadow-sm">
+                {pendingRequests.filter(r => r.user_id !== user.id).length}
               </span>
             )}
           </button>
@@ -291,12 +291,12 @@ export default function ChatDashboard() {
         <div className="flex-1 overflow-y-auto px-2 pb-2 mt-2">
           {searchQuery ? (
             <div className="space-y-1">
-              <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2 mt-2">Search Results</h4>
+              <h4 className="px-3 text-xs font-bold text-muted-text uppercase tracking-wider mb-2 mt-2">Search Results</h4>
               {searchResults.map(u => (
-                <div key={u.id} className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-cream/50 transition-colors text-left">
-                  <div className="flex items-center gap-3 flex-1 overflow-hidden" onClick={() => handleStartChat(u.id)} role="button">
+                <div key={u.id} className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-white/60 transition-colors text-left border border-transparent hover:border-white/50">
+                  <div className="flex items-center gap-3 flex-1 overflow-hidden cursor-pointer" onClick={() => handleStartChat(u.id)} role="button">
                     <div 
-                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" 
+                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center shadow-sm" 
                       style={{
                         backgroundColor: u.avatar_color,
                         backgroundImage: u.avatar_url ? `url(http://localhost:8000${u.avatar_url})` : 'none'
@@ -305,13 +305,13 @@ export default function ChatDashboard() {
                       {!u.avatar_url && u.nickname.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      <h4 className="font-semibold text-deepslate-900 truncate">{u.nickname}</h4>
+                      <h4 className="font-bold text-deepslate-900 truncate">{u.nickname}</h4>
                       <p className="text-sm text-muted-text truncate">@{u.username}</p>
                     </div>
                   </div>
                   <button 
                     onClick={(e) => { e.stopPropagation(); handleSendFriendRequest(u.id); }}
-                    className="text-xs bg-mint/10 text-mint px-3 py-1.5 rounded-full font-medium hover:bg-mint hover:text-white transition-colors"
+                    className="text-xs bg-mint/15 text-mint px-3.5 py-1.5 rounded-full font-bold hover:bg-mint hover:text-white transition-all shadow-sm"
                   >
                     Add
                   </button>
@@ -320,7 +320,7 @@ export default function ChatDashboard() {
               {searchResults.length === 0 && <p className="text-center text-muted-text text-sm p-4">No users found.</p>}
             </div>
           ) : activeTab === 'chats' ? (
-            <div className="space-y-1">
+            <div className="space-y-1.5 px-1">
               {conversations.map(conv => {
                 const p = getPartner(conv);
                 if (!p) return null;
@@ -331,11 +331,11 @@ export default function ChatDashboard() {
                   <button 
                     key={conv.id}
                     onClick={() => setActiveConversation(conv.id)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-colors text-left ${isActive ? 'bg-cream' : 'hover:bg-cream/50'}`}
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left border ${isActive ? 'bg-white shadow-soft border-white/80' : 'bg-transparent border-transparent hover:bg-white/50 hover:border-white/40'}`}
                   >
                     <div className="relative shrink-0">
                       <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm bg-cover bg-center" 
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm bg-cover bg-center ring-2 ring-white/50" 
                         style={{
                           backgroundColor: p.avatar_color,
                           backgroundImage: p.avatar_url ? `url(http://localhost:8000${p.avatar_url})` : 'none'
@@ -344,19 +344,19 @@ export default function ChatDashboard() {
                         {!p.avatar_url && p.nickname.charAt(0).toUpperCase()}
                       </div>
                       {isOnline && (
-                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full"></div>
+                        <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full shadow-sm"></div>
                       )}
                     </div>
                     <div className="flex-1 overflow-hidden">
                       <div className="flex justify-between items-baseline mb-0.5">
-                        <h4 className="font-semibold text-deepslate-900 truncate pr-2">{p.nickname}</h4>
-                        <span className="text-xs text-muted-text shrink-0">
+                        <h4 className="font-bold text-deepslate-900 truncate pr-2">{p.nickname}</h4>
+                        <span className="text-xs font-medium text-muted-text shrink-0">
                           {format(new Date(conv.updated_at), "HH:mm")}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-text truncate">
+                      <p className="text-sm text-muted-text truncate font-medium">
                         {typingUsers[conv.id] === p.id ? (
-                          <span className="text-mint font-medium italic">Typing...</span>
+                          <span className="text-mint italic">Typing...</span>
                         ) : "Click to view messages"}
                       </p>
                     </div>
@@ -365,8 +365,8 @@ export default function ChatDashboard() {
               })}
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="px-3 pt-2">
+            <div className="space-y-4 px-1">
+              <div className="pt-2">
                 <form 
                   onSubmit={async (e) => {
                     e.preventDefault();
@@ -386,27 +386,30 @@ export default function ChatDashboard() {
                     name="username"
                     type="text" 
                     placeholder="Add friend by username..." 
-                    className="flex-1 bg-cream/50 border border-muted-border rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                    className="flex-1 bg-white/60 border border-white/50 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-mint/50 focus:ring-2 focus:ring-mint/20 shadow-sm transition-all text-deepslate-900"
                   />
-                  <button type="submit" className="bg-mint text-white px-3 py-2 rounded-xl text-sm font-semibold hover:bg-mint/90 transition-colors">
+                  <button type="submit" className="bg-mint text-white px-3.5 py-2 rounded-xl text-sm font-bold shadow-md hover:shadow-lg hover:bg-mint/90 transition-all">
                     Send
                   </button>
                 </form>
               </div>
 
-              {pendingRequests.filter(r => r.friend.id === user.id).length > 0 && (
-                <div className="space-y-1">
-                  <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2">Friend Requests</h4>
-                  {pendingRequests.filter(r => r.friend.id === user.id).map(req => (
-                    <div key={req.id} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-cream/30 border border-muted-border">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" style={{backgroundColor: req.user.avatar_color, backgroundImage: req.user.avatar_url ? `url(http://localhost:8000${req.user.avatar_url})` : 'none'}}>
-                        {!req.user.avatar_url && req.user.nickname.charAt(0).toUpperCase()}
+              {pendingRequests.filter(r => r.user_id !== user.id).length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold text-muted-text uppercase tracking-wider mb-2">Friend Requests</h4>
+                  {pendingRequests.filter(r => r.user_id !== user.id).map(req => (
+                    <div key={req.id} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/50 border border-white/60 shadow-sm">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center shadow-sm" style={{backgroundColor: req.friend.avatar_color, backgroundImage: req.friend.avatar_url ? `url(http://localhost:8000${req.friend.avatar_url})` : 'none'}}>
+                        {!req.friend.avatar_url && req.friend.nickname.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <h4 className="font-semibold text-deepslate-900 text-sm truncate">{req.user.nickname}</h4>
-                        <div className="flex gap-2 mt-1">
-                          <button onClick={() => handleAcceptRequest(req.id)} className="text-[10px] bg-mint text-white px-2 py-1 rounded">Accept</button>
-                          <button onClick={() => handleRejectRequest(req.id)} className="text-[10px] bg-muted-border text-deepslate-900 px-2 py-1 rounded">Ignore</button>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <h4 className="font-bold text-deepslate-900 text-sm truncate pr-1">{req.friend.nickname}</h4>
+                          <span className="text-xs font-medium text-muted-text truncate shrink-0">@{req.friend.username}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleAcceptRequest(req.id)} className="text-[11px] font-bold bg-mint text-white px-3 py-1.5 rounded-lg shadow-sm hover:shadow-md transition-all">Accept</button>
+                          <button onClick={() => handleRejectRequest(req.id)} className="text-[11px] font-bold bg-white/80 border border-white text-deepslate-900 px-3 py-1.5 rounded-lg shadow-sm hover:bg-white transition-all">Ignore</button>
                         </div>
                       </div>
                     </div>
@@ -414,23 +417,26 @@ export default function ChatDashboard() {
                 </div>
               )}
               
-              <div className="space-y-1">
-                <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2">My Friends</h4>
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-muted-text uppercase tracking-wider mb-2 mt-4">My Friends</h4>
                 {friends.length === 0 ? (
-                  <p className="text-center text-muted-text text-sm p-4">No friends yet. Search for users to add them!</p>
+                  <p className="text-center text-muted-text text-sm p-4 bg-white/30 rounded-2xl border border-white/40">No friends yet. Search for users to add them!</p>
                 ) : (
                   friends.map(f => (
                     <button 
                       key={f.id}
                       onClick={() => handleStartChat(f.friend.id)}
-                      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-cream/50 transition-colors text-left"
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/40 hover:bg-white/70 border border-transparent hover:border-white/60 transition-all text-left shadow-sm hover:shadow-md"
                     >
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" style={{backgroundColor: f.friend.avatar_color, backgroundImage: f.friend.avatar_url ? `url(http://localhost:8000${f.friend.avatar_url})` : 'none'}}>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center shadow-sm" style={{backgroundColor: f.friend.avatar_color, backgroundImage: f.friend.avatar_url ? `url(http://localhost:8000${f.friend.avatar_url})` : 'none'}}>
                         {!f.friend.avatar_url && f.friend.nickname.charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <h4 className="font-semibold text-deepslate-900 truncate">{f.friend.nickname}</h4>
-                        <p className="text-xs text-muted-text truncate">{f.friend.status_message || "Hey there! I am using ChatSync."}</p>
+                        <div className="flex justify-between items-baseline mb-0.5">
+                          <h4 className="font-bold text-deepslate-900 truncate pr-2">{f.friend.nickname}</h4>
+                          <span className="text-xs font-medium text-muted-text truncate shrink-0">@{f.friend.username}</span>
+                        </div>
+                        <p className="text-xs text-muted-text truncate font-medium">{f.friend.status_message || "Hey there! I am using ChatSync."}</p>
                       </div>
                     </button>
                   ))
@@ -442,15 +448,15 @@ export default function ChatDashboard() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 bg-white rounded-3xl shadow-soft border border-black/5 flex flex-col overflow-hidden relative">
+      <div className="flex-1 bg-white/70 backdrop-blur-3xl rounded-3xl shadow-soft border border-white/60 flex flex-col overflow-hidden relative">
         {activeConversation ? (
           <>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-muted-border flex items-center justify-between gap-4 bg-white/80 backdrop-blur z-10 absolute top-0 w-full">
+            <div className="px-6 py-4 border-b border-white/40 flex items-center justify-between gap-4 bg-white/50 backdrop-blur-md z-10 absolute top-0 w-full shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm bg-cover bg-center" 
+                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-md bg-cover bg-center ring-2 ring-white" 
                     style={{
                       backgroundColor: partner?.avatar_color,
                       backgroundImage: partner?.avatar_url ? `url(http://localhost:8000${partner.avatar_url})` : 'none'
@@ -459,14 +465,14 @@ export default function ChatDashboard() {
                     {!partner?.avatar_url && partner?.nickname.charAt(0).toUpperCase()}
                   </div>
                   {isPartnerOnline && (
-                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full"></div>
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full shadow-sm"></div>
                   )}
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-deepslate-900 leading-tight">{partner?.nickname}</h3>
-                  <p className="text-sm text-muted-text">
+                  <h3 className="font-bold text-xl text-deepslate-900 leading-tight tracking-tight">{partner?.nickname}</h3>
+                  <p className="text-sm font-medium text-muted-text">
                     {isPartnerTyping ? (
-                      <span className="text-mint font-medium">typing...</span>
+                      <span className="text-mint italic">typing...</span>
                     ) : isPartnerOnline ? (
                       <span className="text-mint">Online</span>
                     ) : (
@@ -477,21 +483,21 @@ export default function ChatDashboard() {
               </div>
               <button 
                 onClick={() => handleBlockUser(partner?.id)}
-                className="text-xs font-semibold text-coral bg-coral/10 hover:bg-coral hover:text-white transition-colors px-3 py-1.5 rounded-xl border border-coral/20"
+                className="text-xs font-bold text-coral bg-coral/10 hover:bg-coral hover:text-white transition-all px-4 py-2 rounded-xl shadow-sm hover:shadow-md"
               >
                 Block User
               </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 pt-24 space-y-4 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-cream/10">
+            <div className="flex-1 overflow-y-auto p-6 pt-24 space-y-4 bg-transparent">
               
               {hasNextPage && (
-                <div className="flex justify-center mb-4">
+                <div className="flex justify-center mb-6">
                   <button 
                     onClick={() => fetchNextPage()} 
                     disabled={isFetchingNextPage}
-                    className="bg-white border border-muted-border text-deepslate-800 px-4 py-2 rounded-full text-sm font-medium hover:bg-cream transition-colors disabled:opacity-50"
+                    className="bg-white/80 backdrop-blur border border-white shadow-sm text-deepslate-800 px-5 py-2 rounded-full text-sm font-bold hover:bg-white transition-all disabled:opacity-50"
                   >
                     {isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : "Load older messages"}
                   </button>
@@ -505,34 +511,34 @@ export default function ChatDashboard() {
                 return (
                   <div key={msg.id} className="flex flex-col">
                     {showDate && (
-                      <div className="flex justify-center my-4">
-                        <span className="bg-muted-border/40 text-muted-text text-xs px-3 py-1 rounded-full font-medium">
+                      <div className="flex justify-center my-6">
+                        <span className="bg-white/60 backdrop-blur border border-white/50 text-muted-text shadow-sm text-xs px-4 py-1.5 rounded-full font-bold">
                           {format(new Date(msg.created_at), "MMMM d, yyyy")}
                         </span>
                       </div>
                     )}
                     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[70%] group relative flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
-                        <div className={`px-5 py-3 shadow-sm ${
+                      <div className={`max-w-[75%] group relative flex flex-col ${isMine ? 'items-end' : 'items-start'}`}>
+                        <div className={`px-5 py-3.5 shadow-md ${
                           msg.status === 'FAILED' ? 'bg-coral/20 border-coral text-coral' :
                           isMine 
-                            ? 'bg-mint text-white rounded-3xl rounded-tr-sm' 
-                            : 'bg-white border border-muted-border text-deepslate-900 rounded-3xl rounded-tl-sm'
+                            ? 'bg-gradient-to-br from-mint to-teal-500 text-white rounded-3xl rounded-tr-sm' 
+                            : 'bg-white text-deepslate-900 rounded-3xl rounded-tl-sm border border-white/60'
                         }`}>
-                          <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                          <p className="text-[15px] font-medium leading-relaxed break-words">{msg.content}</p>
                         </div>
-                        <div className={`flex items-center gap-1 mt-1 px-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-                          <span className="text-[11px] text-muted-text">
+                        <div className={`flex items-center gap-1.5 mt-1.5 px-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <span className="text-[11px] font-semibold text-muted-text">
                             {format(new Date(msg.created_at), "HH:mm")}
                           </span>
                           {isMine && (
-                            <span className={`ml-1 ${msg.status === 'FAILED' ? 'text-coral' : 'text-mint'}`}>
-                              {msg.status === "SENDING" ? <Loader2 size={12} className="animate-spin text-muted-text" /> :
-                               msg.status === "SENT" ? <Check size={14} className="text-muted-text" /> :
-                               msg.status === "DELIVERED" ? <CheckCheck size={14} className="text-muted-text" /> :
-                               msg.status === "FAILED" ? "Failed" :
-                               <CheckCheck size={14} />}
-                            </span>
+                             <span className={`${msg.status === 'FAILED' ? 'text-coral' : 'text-mint'}`}>
+                               {msg.status === "SENDING" ? <Loader2 size={12} className="animate-spin opacity-70" /> :
+                                msg.status === "SENT" ? <Check size={14} className="opacity-70" /> :
+                                msg.status === "DELIVERED" ? <CheckCheck size={14} className="opacity-70" /> :
+                                msg.status === "FAILED" ? <span className="text-[10px] uppercase font-bold">Failed</span> :
+                                <CheckCheck size={14} />}
+                             </span>
                           )}
                         </div>
                       </div>
@@ -544,9 +550,9 @@ export default function ChatDashboard() {
             </div>
 
             {/* Input */}
-            <div className="p-4 bg-white border-t border-muted-border">
-              <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-cream/30 border border-muted-border rounded-3xl p-1.5 focus-within:ring-2 focus-within:ring-mint/50 focus-within:border-mint transition-all">
-                <button type="button" className="p-3 text-muted-text hover:text-golden transition-colors shrink-0">
+            <div className="p-5 bg-white/40 backdrop-blur-md border-t border-white/50">
+              <form onSubmit={handleSendMessage} className="flex items-end gap-3 bg-white/70 shadow-inner border border-white/60 rounded-3xl p-1.5 focus-within:ring-4 focus-within:ring-mint/20 focus-within:border-mint/50 focus-within:bg-white transition-all">
+                <button type="button" className="p-3 text-muted-text hover:text-mint transition-colors shrink-0">
                   <Smile size={24} />
                 </button>
                 <textarea 
@@ -562,27 +568,27 @@ export default function ChatDashboard() {
                     }
                   }}
                   placeholder="Type a message..."
-                  className="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-deepslate-900 focus:outline-none"
+                  className="w-full bg-transparent border-none focus:ring-0 resize-none py-3.5 font-medium max-h-32 text-deepslate-900 focus:outline-none placeholder:text-muted-text"
                   rows={1}
                 />
                 <button 
                   type="submit" 
                   disabled={!messageInput.trim()}
-                  className="p-3 bg-mint text-white rounded-full hover:bg-mint/90 transition-colors disabled:opacity-50 disabled:hover:bg-mint shrink-0 shadow-md flex items-center justify-center w-11 h-11"
+                  className="p-3.5 bg-mint text-white rounded-full hover:bg-teal-500 hover:shadow-glow transition-all disabled:opacity-50 disabled:hover:bg-mint disabled:hover:shadow-none shrink-0 shadow-md flex items-center justify-center w-12 h-12"
                 >
-                  <Send size={18} className="ml-0.5" />
+                  <Send size={20} className="ml-0.5" />
                 </button>
               </form>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-cream/20">
-            <div className="bg-white p-6 rounded-full shadow-soft mb-6">
-              <MessageCircle size={48} className="text-mint" />
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-white/20">
+            <div className="bg-white/80 backdrop-blur p-8 rounded-full shadow-soft mb-8 ring-4 ring-white/50">
+              <MessageCircle size={56} className="text-mint drop-shadow-sm" />
             </div>
-            <h2 className="text-2xl font-bold text-deepslate-900 mb-2">Welcome to ChatSync</h2>
-            <p className="text-muted-text max-w-sm">
-              Select a conversation from the sidebar or search for a user to start messaging instantly.
+            <h2 className="text-3xl font-bold text-deepslate-900 mb-3 tracking-tight">Welcome to ChatSync</h2>
+            <p className="text-muted-text font-medium max-w-sm text-lg">
+              Select a conversation from the sidebar or search for a friend to start messaging.
             </p>
           </div>
         )}
