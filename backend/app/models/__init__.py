@@ -12,6 +12,35 @@ import enum
 
 from app.db.session import Base
 
+class FriendshipStatus(str, enum.Enum):
+    """Enumeration of friendship states."""
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    BLOCKED = "BLOCKED"
+
+class Friendship(Base):
+    """
+    Friendship Model.
+    
+    Represents the social graph edges (friends, blocks, requests).
+    """
+    __tablename__ = "friendships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    friend_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(Enum(FriendshipStatus), default=FriendshipStatus.PENDING, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+    )
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id])
+    friend = relationship("User", foreign_keys=[friend_id])
+
 class MessageStatus(str, enum.Enum):
     """Enumeration of message delivery and read states."""
     SENT = "SENT"            # Persisted to server database and acknowledged to sender
@@ -33,6 +62,10 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     avatar_color = Column(String, nullable=False)
+    avatar_url = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)
+    status_message = Column(String, nullable=True)
+    privacy = Column(String, default="PUBLIC") # Can be PUBLIC, PRIVATE
     is_online = Column(Boolean, default=False)
     last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))

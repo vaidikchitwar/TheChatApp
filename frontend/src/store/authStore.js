@@ -124,6 +124,46 @@ export const useAuthStore = create((set, get) => ({
     await axios.post("http://localhost:8000/api/v1/auth/register", userData);
     // Automatically log in using the same credentials after successful registration
     await get().login(userData.username, userData.password);
+  },
+
+  /**
+   * Update the user's profile settings (nickname, bio, status_message, privacy)
+   * 
+   * @param {Object} updateData - Profile fields to update
+   */
+  updateProfile: async (updateData) => {
+    const res = await axios.patch("http://localhost:8000/api/v1/users/me", updateData);
+    set({ user: res.data });
+  },
+
+  /**
+   * Upload a new avatar image.
+   * 
+   * @param {File} file - Image file object
+   */
+  uploadAvatar: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    const res = await axios.post("http://localhost:8000/api/v1/users/me/avatar", formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    set({ user: res.data });
+  },
+
+  /**
+   * Change user password.
+   * 
+   * @param {string} currentPassword - Current password
+   * @param {string} newPassword - New password
+   */
+  changePassword: async (currentPassword, newPassword) => {
+    await axios.post("http://localhost:8000/api/v1/auth/change-password", {
+      current_password: currentPassword,
+      new_password: newPassword
+    });
   }
 }));
 

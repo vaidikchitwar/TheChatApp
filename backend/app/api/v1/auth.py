@@ -208,3 +208,31 @@ async def get_me(current_user: models.User = Depends(auth_service.get_current_us
     """
     return current_user
 
+@router.post("/change-password")
+async def change_password(
+    password_data: schemas.ChangePasswordRequest,
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(auth_service.get_current_user)
+):
+    """
+    Update the authenticated user's password.
+    """
+    # Verify current password
+    if not auth_service.verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password"
+        )
+    
+    # Hash and update to new password
+    current_user.hashed_password = auth_service.get_password_hash(password_data.new_password)
+    
+    # Optionally: Revoke all refresh tokens so other sessions are logged out
+    result = await db.execute(select(models.RefreshToken).filter(models.RefreshToken.user_id == current_user.id))
+    tokens = result.scalars().all()
+    for token in tokens:
+        token.is_revoked = True
+        
+    await db.commit()
+    return {"message": "Password updated successfully. Other sessions logged out."}
+

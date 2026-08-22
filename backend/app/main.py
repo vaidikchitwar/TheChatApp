@@ -8,9 +8,14 @@ and mounts all version 1 API and WebSocket routers.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+import os
 
-from app.api.v1 import auth, conversations, users, websockets
+from app.api.v1 import auth, conversations, users, websockets, friends
 from app.websocket.manager import manager
+
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -48,5 +53,9 @@ app.add_middleware(
 # Register REST and WebSocket API Routers
 app.include_router(auth.router)
 app.include_router(users.router)
+app.include_router(friends.router)
 app.include_router(conversations.router)
 app.include_router(websockets.router)
+
+# Mount static uploads directory for avatars and media
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")

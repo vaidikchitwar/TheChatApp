@@ -11,7 +11,8 @@ import { useAuthStore } from "../store/authStore";
 import { useChatStore } from "../store/chatStore";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
-import { Search, LogOut, Send, Smile, Check, CheckCheck, Loader2, MessageCircle } from "lucide-react";
+import ProfileSettings from "./ProfileSettings";
+import { Search, LogOut, Send, Smile, Check, CheckCheck, Loader2, MessageCircle, Settings } from "lucide-react";
 import { format } from "date-fns";
 
 /**
@@ -42,9 +43,11 @@ export default function ChatDashboard() {
   }, [connect, disconnect, queryClient]);
 
   // Local component UI states
+  const [activeTab, setActiveTab] = useState("chats"); // 'chats' | 'friends'
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [messageInput, setMessageInput] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef(null);
 
   // 2. Fetch conversation list using TanStack Query
@@ -52,6 +55,22 @@ export default function ChatDashboard() {
     queryKey: ['conversations'],
     queryFn: async () => {
       const res = await axios.get("http://localhost:8000/api/v1/conversations");
+      return res.data;
+    }
+  });
+
+  const { data: friends = [], refetch: refetchFriends } = useQuery({
+    queryKey: ['friends'],
+    queryFn: async () => {
+      const res = await axios.get("http://localhost:8000/api/v1/friends");
+      return res.data;
+    }
+  });
+
+  const { data: pendingRequests = [], refetch: refetchPendingRequests } = useQuery({
+    queryKey: ['pendingRequests'],
+    queryFn: async () => {
+      const res = await axios.get("http://localhost:8000/api/v1/friends/pending");
       return res.data;
     }
   });
@@ -114,6 +133,7 @@ export default function ChatDashboard() {
    * @param {number} targetUserId - Target participant's user ID
    */
   const handleStartChat = async (targetUserId) => {
+    // If they aren't friends, maybe we shouldn't allow it, or just allow it. For now, allow it.
     const res = await axios.post(`http://localhost:8000/api/v1/conversations?target_user_id=${targetUserId}`);
     const newConv = res.data;
     
@@ -124,6 +144,35 @@ export default function ChatDashboard() {
     
     setActiveConversation(newConv.id);
     setSearchQuery("");
+  };
+
+  const handleSendFriendRequest = async (targetUserId) => {
+    try {
+      await axios.post(`http://localhost:8000/api/v1/friends/request?target_user_id=${targetUserId}`);
+      alert("Friend request sent!");
+      refetchPendingRequests();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Error sending request");
+    }
+  };
+
+  const handleAcceptRequest = async (friendshipId) => {
+    try {
+      await axios.post(`http://localhost:8000/api/v1/friends/accept?friendship_id=${friendshipId}`);
+      refetchFriends();
+      refetchPendingRequests();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Error accepting request");
+    }
+  };
+
+  const handleRejectRequest = async (friendshipId) => {
+    try {
+      await axios.post(`http://localhost:8000/api/v1/friends/reject?friendship_id=${friendshipId}`);
+      refetchPendingRequests();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Error rejecting request");
+    }
   };
 
   /**
@@ -155,6 +204,18 @@ export default function ChatDashboard() {
   const isPartnerOnline = partner && onlineUsers.has(partner.id);
   const isPartnerTyping = partner && typingUsers[activeConversation] === partner.id;
 
+  const handleBlockUser = async (targetId) => {
+    if (!window.confirm("Are you sure you want to block this user?")) return;
+    try {
+      await axios.post(`http://localhost:8000/api/v1/friends/block?target_user_id=${targetId}`);
+      setActiveConversation(null); // Close the chat window
+      refetchConversations();
+      refetchFriends();
+    } catch (e) {
+      alert(e.response?.data?.detail || "Error blocking user");
+    }
+  };
+
   // Guard: if user profile is still loading, render nothing
   if (!user) return null;
 
@@ -166,8 +227,14 @@ export default function ChatDashboard() {
         {/* User Profile Bar & Logout Button */}
         <div className="p-5 border-b border-muted-border bg-deepslate-900 text-white flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner" style={{backgroundColor: user?.avatar_color}}>
-              {user?.nickname?.charAt(0).toUpperCase()}
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner bg-cover bg-center" 
+              style={{
+                backgroundColor: user?.avatar_color,
+                backgroundImage: user?.avatar_url ? `url(http://localhost:8000${user.avatar_url})` : 'none'
+              }}
+            >
+              {!user?.avatar_url && user?.nickname?.charAt(0).toUpperCase()}
             </div>
             <div>
               <h3 className="font-bold">{user?.nickname}</h3>
@@ -176,10 +243,17 @@ export default function ChatDashboard() {
               </div>
             </div>
           </div>
-          <button onClick={logout} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Logout">
-            <LogOut size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setShowSettings(true)} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Settings">
+              <Settings size={18} />
+            </button>
+            <button onClick={logout} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Logout">
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
+
+        {showSettings && <ProfileSettings onClose={() => setShowSettings(false)} />}
 
         <div className="p-4">
           <div className="relative">
@@ -194,28 +268,58 @@ export default function ChatDashboard() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-2 pb-2">
+        <div className="flex border-b border-muted-border mt-1">
+          <button 
+            className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'chats' ? 'border-mint text-mint' : 'border-transparent text-muted-text hover:text-deepslate-900'}`}
+            onClick={() => setActiveTab('chats')}
+          >
+            Chats
+          </button>
+          <button 
+            className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex justify-center items-center gap-2 ${activeTab === 'friends' ? 'border-mint text-mint' : 'border-transparent text-muted-text hover:text-deepslate-900'}`}
+            onClick={() => setActiveTab('friends')}
+          >
+            Friends
+            {pendingRequests.filter(r => r.friend.id === user.id).length > 0 && (
+              <span className="bg-coral text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                {pendingRequests.filter(r => r.friend.id === user.id).length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-2 pb-2 mt-2">
           {searchQuery ? (
             <div className="space-y-1">
               <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2 mt-2">Search Results</h4>
               {searchResults.map(u => (
-                <button 
-                  key={u.id}
-                  onClick={() => handleStartChat(u.id)}
-                  className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-cream/50 transition-colors text-left"
-                >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0" style={{backgroundColor: u.avatar_color}}>
-                    {u.nickname.charAt(0).toUpperCase()}
+                <div key={u.id} className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl hover:bg-cream/50 transition-colors text-left">
+                  <div className="flex items-center gap-3 flex-1 overflow-hidden" onClick={() => handleStartChat(u.id)} role="button">
+                    <div 
+                      className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" 
+                      style={{
+                        backgroundColor: u.avatar_color,
+                        backgroundImage: u.avatar_url ? `url(http://localhost:8000${u.avatar_url})` : 'none'
+                      }}
+                    >
+                      {!u.avatar_url && u.nickname.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <h4 className="font-semibold text-deepslate-900 truncate">{u.nickname}</h4>
+                      <p className="text-sm text-muted-text truncate">@{u.username}</p>
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h4 className="font-semibold text-deepslate-900 truncate">{u.nickname}</h4>
-                    <p className="text-sm text-muted-text truncate">@{u.username}</p>
-                  </div>
-                </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleSendFriendRequest(u.id); }}
+                    className="text-xs bg-mint/10 text-mint px-3 py-1.5 rounded-full font-medium hover:bg-mint hover:text-white transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
               ))}
               {searchResults.length === 0 && <p className="text-center text-muted-text text-sm p-4">No users found.</p>}
             </div>
-          ) : (
+          ) : activeTab === 'chats' ? (
             <div className="space-y-1">
               {conversations.map(conv => {
                 const p = getPartner(conv);
@@ -230,8 +334,14 @@ export default function ChatDashboard() {
                     className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-colors text-left ${isActive ? 'bg-cream' : 'hover:bg-cream/50'}`}
                   >
                     <div className="relative shrink-0">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm" style={{backgroundColor: p.avatar_color}}>
-                        {p.nickname.charAt(0).toUpperCase()}
+                      <div 
+                        className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm bg-cover bg-center" 
+                        style={{
+                          backgroundColor: p.avatar_color,
+                          backgroundImage: p.avatar_url ? `url(http://localhost:8000${p.avatar_url})` : 'none'
+                        }}
+                      >
+                        {!p.avatar_url && p.nickname.charAt(0).toUpperCase()}
                       </div>
                       {isOnline && (
                         <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full"></div>
@@ -254,6 +364,79 @@ export default function ChatDashboard() {
                 )
               })}
             </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="px-3 pt-2">
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const username = e.target.username.value.trim();
+                    if (!username) return;
+                    try {
+                      const res = await axios.get(`http://localhost:8000/api/v1/users/search?username=${username}`);
+                      await handleSendFriendRequest(res.data.id);
+                      e.target.reset();
+                    } catch (err) {
+                      alert(err.response?.data?.detail || "User not found or error occurred");
+                    }
+                  }}
+                  className="flex gap-2"
+                >
+                  <input 
+                    name="username"
+                    type="text" 
+                    placeholder="Add friend by username..." 
+                    className="flex-1 bg-cream/50 border border-muted-border rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-mint focus:ring-1 focus:ring-mint transition-all"
+                  />
+                  <button type="submit" className="bg-mint text-white px-3 py-2 rounded-xl text-sm font-semibold hover:bg-mint/90 transition-colors">
+                    Send
+                  </button>
+                </form>
+              </div>
+
+              {pendingRequests.filter(r => r.friend.id === user.id).length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2">Friend Requests</h4>
+                  {pendingRequests.filter(r => r.friend.id === user.id).map(req => (
+                    <div key={req.id} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-cream/30 border border-muted-border">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" style={{backgroundColor: req.user.avatar_color, backgroundImage: req.user.avatar_url ? `url(http://localhost:8000${req.user.avatar_url})` : 'none'}}>
+                        {!req.user.avatar_url && req.user.nickname.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <h4 className="font-semibold text-deepslate-900 text-sm truncate">{req.user.nickname}</h4>
+                        <div className="flex gap-2 mt-1">
+                          <button onClick={() => handleAcceptRequest(req.id)} className="text-[10px] bg-mint text-white px-2 py-1 rounded">Accept</button>
+                          <button onClick={() => handleRejectRequest(req.id)} className="text-[10px] bg-muted-border text-deepslate-900 px-2 py-1 rounded">Ignore</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              <div className="space-y-1">
+                <h4 className="px-3 text-xs font-semibold text-muted-text uppercase tracking-wider mb-2">My Friends</h4>
+                {friends.length === 0 ? (
+                  <p className="text-center text-muted-text text-sm p-4">No friends yet. Search for users to add them!</p>
+                ) : (
+                  friends.map(f => (
+                    <button 
+                      key={f.id}
+                      onClick={() => handleStartChat(f.friend.id)}
+                      className="w-full flex items-center gap-3 p-3 rounded-2xl hover:bg-cream/50 transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shrink-0 bg-cover bg-center" style={{backgroundColor: f.friend.avatar_color, backgroundImage: f.friend.avatar_url ? `url(http://localhost:8000${f.friend.avatar_url})` : 'none'}}>
+                        {!f.friend.avatar_url && f.friend.nickname.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        <h4 className="font-semibold text-deepslate-900 truncate">{f.friend.nickname}</h4>
+                        <p className="text-xs text-muted-text truncate">{f.friend.status_message || "Hey there! I am using ChatSync."}</p>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -263,27 +446,41 @@ export default function ChatDashboard() {
         {activeConversation ? (
           <>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-muted-border flex items-center gap-4 bg-white/80 backdrop-blur z-10 absolute top-0 w-full">
-              <div className="relative">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm" style={{backgroundColor: partner?.avatar_color}}>
-                  {partner?.nickname.charAt(0).toUpperCase()}
-                </div>
-                {isPartnerOnline && (
-                  <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full"></div>
-                )}
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-deepslate-900 leading-tight">{partner?.nickname}</h3>
-                <p className="text-sm text-muted-text">
-                  {isPartnerTyping ? (
-                    <span className="text-mint font-medium">typing...</span>
-                  ) : isPartnerOnline ? (
-                    <span className="text-mint">Online</span>
-                  ) : (
-                    <span>Last seen {partner?.last_seen ? format(new Date(partner.last_seen), "MMM d, HH:mm") : "recently"}</span>
+            <div className="px-6 py-4 border-b border-muted-border flex items-center justify-between gap-4 bg-white/80 backdrop-blur z-10 absolute top-0 w-full">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div 
+                    className="w-12 h-12 rounded-full flex items-center justify-center font-bold text-white shadow-sm bg-cover bg-center" 
+                    style={{
+                      backgroundColor: partner?.avatar_color,
+                      backgroundImage: partner?.avatar_url ? `url(http://localhost:8000${partner.avatar_url})` : 'none'
+                    }}
+                  >
+                    {!partner?.avatar_url && partner?.nickname.charAt(0).toUpperCase()}
+                  </div>
+                  {isPartnerOnline && (
+                    <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-mint border-2 border-white rounded-full"></div>
                   )}
-                </p>
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg text-deepslate-900 leading-tight">{partner?.nickname}</h3>
+                  <p className="text-sm text-muted-text">
+                    {isPartnerTyping ? (
+                      <span className="text-mint font-medium">typing...</span>
+                    ) : isPartnerOnline ? (
+                      <span className="text-mint">Online</span>
+                    ) : (
+                      <span>Last seen {partner?.last_seen ? format(new Date(partner.last_seen), "MMM d, HH:mm") : "recently"}</span>
+                    )}
+                  </p>
+                </div>
               </div>
+              <button 
+                onClick={() => handleBlockUser(partner?.id)}
+                className="text-xs font-semibold text-coral bg-coral/10 hover:bg-coral hover:text-white transition-colors px-3 py-1.5 rounded-xl border border-coral/20"
+              >
+                Block User
+              </button>
             </div>
 
             {/* Messages */}

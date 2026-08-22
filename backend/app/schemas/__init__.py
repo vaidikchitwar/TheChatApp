@@ -33,6 +33,10 @@ class UserResponse(UserBase):
     """Full user profile response for the authenticated user."""
     id: int
     avatar_color: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    status_message: Optional[str] = None
+    privacy: str
     is_online: bool
     last_seen: datetime
     created_at: datetime
@@ -45,10 +49,45 @@ class PublicUserResponse(BaseModel):
     username: str
     nickname: str
     avatar_color: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    status_message: Optional[str] = None
     is_online: bool
     last_seen: datetime
 
     model_config = {"from_attributes": True}
+
+class FriendshipResponse(BaseModel):
+    """Information about a friendship connection."""
+    id: int
+    user_id: int
+    friend: PublicUserResponse
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+class UserProfileUpdate(BaseModel):
+    """Fields that a user can update on their profile."""
+    nickname: Optional[str] = None
+    bio: Optional[str] = None
+    status_message: Optional[str] = None
+    privacy: Optional[str] = None
+
+class ChangePasswordRequest(BaseModel):
+    """Schema for updating a user's password."""
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+    @field_validator('new_password')
+    def password_complexity(cls, v):
+        """Validates that password is alphanumeric and includes at least one uppercase letter."""
+        if not re.match(r'^[a-zA-Z0-9]+$', v):
+            raise ValueError("Password must be alphanumeric")
+        if not any(char.isupper() for char in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        return v
 
 class Token(BaseModel):
     """JWT access token response model."""
