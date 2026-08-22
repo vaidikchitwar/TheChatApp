@@ -15,6 +15,13 @@ sys.path.insert(0, os.path.abspath('.'))
 from app.models import Base
 target_metadata = Base.metadata
 
+# Override sqlalchemy.url with DATABASE_URL if provided in environment
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    # Alembic runs synchronously, so we must replace asyncpg with a sync driver like psycopg2
+    db_url = db_url.replace("+asyncpg", "")
+    config.set_main_option("sqlalchemy.url", db_url)
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
