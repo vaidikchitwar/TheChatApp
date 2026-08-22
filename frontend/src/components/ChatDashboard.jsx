@@ -12,7 +12,7 @@ import { useChatStore } from "../store/chatStore";
 import { useQuery, useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import ProfileSettings from "./ProfileSettings";
-import { Search, LogOut, Send, Smile, Check, CheckCheck, Loader2, MessageCircle, Settings } from "lucide-react";
+import { Search, LogOut, Send, Smile, Check, CheckCheck, Loader2, MessageCircle, Settings, Phone, Video, Info, MoreVertical, Plus, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 
 /**
@@ -48,7 +48,29 @@ export default function ChatDashboard() {
   const [searchResults, setSearchResults] = useState([]);
   const [messageInput, setMessageInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const messagesEndRef = useRef(null);
+
+  // Load draft from LocalStorage when active conversation changes
+  useEffect(() => {
+    if (activeConversation) {
+      const draft = localStorage.getItem(`draft_${activeConversation}`);
+      setMessageInput(draft || "");
+    } else {
+      setMessageInput("");
+    }
+  }, [activeConversation]);
+
+  // Save draft to LocalStorage when messageInput changes
+  useEffect(() => {
+    if (activeConversation) {
+      if (messageInput.trim()) {
+        localStorage.setItem(`draft_${activeConversation}`, messageInput);
+      } else {
+        localStorage.removeItem(`draft_${activeConversation}`);
+      }
+    }
+  }, [messageInput, activeConversation]);
 
   // 2. Fetch conversation list using TanStack Query
   const { data: conversations = [], refetch: refetchConversations } = useQuery({
@@ -101,7 +123,22 @@ export default function ChatDashboard() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConversation, latestPageLength]);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleScroll = (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.target;
+    setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 150);
+
+    if (scrollTop < 100 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
+
   // 5. Automatically dispatch read receipts for any unread incoming messages in the active conversation
+  const firstUnreadIdx = currentMessages.findIndex(m => m.sender_id !== user?.id && m.status !== 'READ');
+  
   useEffect(() => {
     if (activeConversation && currentMessages.length > 0 && user) {
       currentMessages.forEach(m => {
@@ -186,6 +223,7 @@ export default function ChatDashboard() {
     
     sendMessage(activeConversation, messageInput.trim(), queryClient);
     setMessageInput("");
+    localStorage.removeItem(`draft_${activeConversation}`);
   };
 
   /**
@@ -452,7 +490,7 @@ export default function ChatDashboard() {
         {activeConversation ? (
           <>
             {/* Header */}
-            <div className="px-6 py-4 border-b border-white/40 flex items-center justify-between gap-4 bg-white/50 backdrop-blur-md z-10 absolute top-0 w-full shadow-sm">
+            <div className="px-6 py-4 border-b border-white/40 flex items-center justify-between gap-4 bg-white/50 backdrop-blur-md z-20 absolute top-0 w-full shadow-sm">
               <div className="flex items-center gap-4">
                 <div className="relative">
                   <div 
@@ -481,32 +519,54 @@ export default function ChatDashboard() {
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={() => handleBlockUser(partner?.id)}
-                className="text-xs font-bold text-coral bg-coral/10 hover:bg-coral hover:text-white transition-all px-4 py-2 rounded-xl shadow-sm hover:shadow-md"
-              >
-                Block User
-              </button>
+              <div className="flex items-center gap-2">
+                <button className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all hidden sm:block" title="Voice Call">
+                  <Phone size={20} />
+                </button>
+                <button className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all hidden sm:block" title="Video Call">
+                  <Video size={20} />
+                </button>
+                <div className="w-px h-6 bg-white/60 mx-1 hidden sm:block"></div>
+                <button className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all" title="Search messages">
+                  <Search size={20} />
+                </button>
+                <button className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all" title="Chat Info">
+                  <Info size={20} />
+                </button>
+                <div className="relative group">
+                  <button className="p-2 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-xl transition-all" title="More options">
+                    <MoreVertical size={20} />
+                  </button>
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-white/60 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col overflow-hidden z-50 transform origin-top-right scale-95 group-hover:scale-100">
+                    <button className="px-4 py-2.5 text-left text-sm font-medium text-deepslate-900 hover:bg-cream/50 transition-colors">View profile</button>
+                    <button className="px-4 py-2.5 text-left text-sm font-medium text-deepslate-900 hover:bg-cream/50 transition-colors">Mute notifications</button>
+                    <button className="px-4 py-2.5 text-left text-sm font-medium text-deepslate-900 hover:bg-cream/50 transition-colors border-b border-muted-border">Clear chat</button>
+                    <button 
+                      onClick={() => handleBlockUser(partner?.id)}
+                      className="px-4 py-2.5 text-left text-sm font-bold text-coral hover:bg-coral/5 transition-colors"
+                    >
+                      Block User
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 pt-24 space-y-4 bg-transparent">
+            <div className="flex-1 overflow-y-auto p-6 pt-24 space-y-4 bg-transparent relative" onScroll={handleScroll}>
               
-              {hasNextPage && (
+              {isFetchingNextPage && (
                 <div className="flex justify-center mb-6">
-                  <button 
-                    onClick={() => fetchNextPage()} 
-                    disabled={isFetchingNextPage}
-                    className="bg-white/80 backdrop-blur border border-white shadow-sm text-deepslate-800 px-5 py-2 rounded-full text-sm font-bold hover:bg-white transition-all disabled:opacity-50"
-                  >
-                    {isFetchingNextPage ? <Loader2 className="animate-spin" size={16} /> : "Load older messages"}
-                  </button>
+                  <span className="bg-white/80 backdrop-blur border border-white shadow-sm text-deepslate-800 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2">
+                    <Loader2 className="animate-spin" size={16} /> Loading older messages...
+                  </span>
                 </div>
               )}
 
               {currentMessages.map((msg, idx) => {
                 const isMine = msg.sender_id === user.id;
                 const showDate = idx === 0 || new Date(currentMessages[idx-1].created_at).toDateString() !== new Date(msg.created_at).toDateString();
+                const showUnreadDivider = firstUnreadIdx === idx;
                 
                 return (
                   <div key={msg.id} className="flex flex-col">
@@ -515,6 +575,13 @@ export default function ChatDashboard() {
                         <span className="bg-white/60 backdrop-blur border border-white/50 text-muted-text shadow-sm text-xs px-4 py-1.5 rounded-full font-bold">
                           {format(new Date(msg.created_at), "MMMM d, yyyy")}
                         </span>
+                      </div>
+                    )}
+                    {showUnreadDivider && (
+                      <div className="flex items-center gap-4 my-4">
+                        <div className="h-px flex-1 bg-mint/30"></div>
+                        <span className="text-xs font-bold text-mint bg-mint/10 px-3 py-1 rounded-full border border-mint/20">New Messages</span>
+                        <div className="h-px flex-1 bg-mint/30"></div>
                       </div>
                     )}
                     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
@@ -547,36 +614,69 @@ export default function ChatDashboard() {
                 )
               })}
               <div ref={messagesEndRef} />
+              
+              {showScrollBottom && (
+                <button 
+                  onClick={scrollToBottom}
+                  className="fixed bottom-28 right-8 bg-white/90 backdrop-blur border border-white/60 p-3 rounded-full shadow-lg text-deepslate-900 hover:text-mint hover:scale-105 transition-all z-30 flex items-center justify-center group"
+                  title="Scroll to bottom"
+                >
+                  <ChevronDown size={24} className="group-hover:translate-y-0.5 transition-transform" />
+                  {firstUnreadIdx !== -1 && (
+                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-coral rounded-full border-2 border-white"></span>
+                  )}
+                </button>
+              )}
             </div>
 
-            {/* Input */}
-            <div className="p-5 bg-white/40 backdrop-blur-md border-t border-white/50">
-              <form onSubmit={handleSendMessage} className="flex items-end gap-3 bg-white/70 shadow-inner border border-white/60 rounded-3xl p-1.5 focus-within:ring-4 focus-within:ring-mint/20 focus-within:border-mint/50 focus-within:bg-white transition-all">
-                <button type="button" className="p-3 text-muted-text hover:text-mint transition-colors shrink-0">
-                  <Smile size={24} />
-                </button>
+            {/* Input Composer */}
+            <div className="p-5 bg-white/40 backdrop-blur-md border-t border-white/50 z-20">
+              <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white/70 shadow-inner border border-white/60 rounded-3xl p-1.5 focus-within:ring-4 focus-within:ring-mint/20 focus-within:border-mint/50 focus-within:bg-white transition-all relative">
+                
+                <div className="relative group">
+                  <button type="button" className="p-3 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-full transition-all shrink-0" title="Attach">
+                    <Plus size={22} />
+                  </button>
+                  <div className="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-2xl shadow-xl border border-white/60 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-2 z-50 transform origin-bottom-left scale-95 group-hover:scale-100">
+                    <button className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-deepslate-900 hover:bg-cream/50 rounded-xl transition-colors">
+                      <span className="w-8 h-8 rounded-full bg-mint/20 flex items-center justify-center text-mint"><Search size={16} /></span> Document
+                    </button>
+                    <button className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-deepslate-900 hover:bg-cream/50 rounded-xl transition-colors">
+                      <span className="w-8 h-8 rounded-full bg-golden/20 flex items-center justify-center text-golden"><Search size={16} /></span> Photo & Video
+                    </button>
+                  </div>
+                </div>
+
                 <textarea 
                   value={messageInput}
                   onChange={(e) => {
                     setMessageInput(e.target.value);
                     sendTyping(activeConversation);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = `${Math.min(e.target.scrollHeight, 150)}px`;
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
                       handleSendMessage(e);
+                      e.target.style.height = 'auto';
                     }
                   }}
                   placeholder="Type a message..."
-                  className="w-full bg-transparent border-none focus:ring-0 resize-none py-3.5 font-medium max-h-32 text-deepslate-900 focus:outline-none placeholder:text-muted-text"
+                  className="w-full bg-transparent border-none focus:ring-0 resize-none py-3 font-medium max-h-[150px] overflow-y-auto text-deepslate-900 focus:outline-none placeholder:text-muted-text/70"
                   rows={1}
                 />
+
+                <button type="button" className="p-3 text-muted-text hover:text-mint hover:bg-white/60 rounded-full transition-all shrink-0" title="Emoji">
+                  <Smile size={22} />
+                </button>
+                
                 <button 
                   type="submit" 
                   disabled={!messageInput.trim()}
-                  className="p-3.5 bg-mint text-white rounded-full hover:bg-teal-500 hover:shadow-glow transition-all disabled:opacity-50 disabled:hover:bg-mint disabled:hover:shadow-none shrink-0 shadow-md flex items-center justify-center w-12 h-12"
+                  className="p-3 bg-gradient-to-r from-mint to-teal-500 text-white rounded-full hover:shadow-glow transition-all disabled:opacity-50 disabled:hover:shadow-none shrink-0 shadow-md flex items-center justify-center w-11 h-11 mb-0.5 mr-0.5"
                 >
-                  <Send size={20} className="ml-0.5" />
+                  <Send size={18} className="ml-0.5" />
                 </button>
               </form>
             </div>

@@ -20,7 +20,7 @@ export default function AuthCard() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login, register, token } = useAuthStore();
-  
+
   // State for toggling between Sign In and Sign Up modes
   const [isSignUp, setIsSignUp] = useState(location.state?.isSignUp || false);
   const [showPassword, setShowPassword] = useState(false);
@@ -160,7 +160,7 @@ export default function AuthCard() {
                   value={formData.username}
                   onChange={handleChange}
                   className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
-                  placeholder="johndoe"
+                  placeholder="Pavitra Prabhakar"
                 />
               </div>
               <div>
@@ -200,7 +200,7 @@ export default function AuthCard() {
                 value={formData.username}
                 onChange={handleChange}
                 className="w-full bg-white/60 border border-white/50 shadow-inner px-4 py-3.5 rounded-xl focus:outline-none focus:ring-4 focus:ring-mint/20 focus:border-mint/50 transition-all font-medium text-deepslate-900 placeholder:text-muted-text/70"
-                placeholder="johndoe"
+                placeholder="Pavitra Prabhakar"
               />
             </div>
           )}
