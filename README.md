@@ -6,12 +6,47 @@ Follow these steps to run the frontend and backend of the application.
 
 ## Prerequisites
 Ensure you have the following installed on your machine:
-- **Node.js** (v18+)
-- **Python** (v3.10+)
+- **Node.js** (v20+)
+- **Python** (v3.12+)
+- **Docker & Docker Compose** (for running PostgreSQL and Redis)
 
 ---
 
-## Step 1: Run the Backend (FastAPI)
+## Step 1: Environment Setup
+
+1. Create a `.env` file in the **`backend`** directory with your configuration:
+   ```env
+   # PostgreSQL
+   DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/chatapp
+   
+   # Redis
+   REDIS_URL=redis://localhost:6379/0
+   
+   # Security
+   SECRET_KEY=your_super_secret_key_here
+   ALGORITHM=HS256
+   
+   # Google OAuth (Required for Login)
+   GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+   ```
+
+2. Create a `.env` file in the **`frontend`** directory:
+   ```env
+   VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+   ```
+
+---
+
+## Step 2: Start Infrastructure (Docker)
+
+The application requires PostgreSQL and Redis. Start them using Docker Compose:
+```bash
+docker compose up -d
+```
+
+---
+
+## Step 3: Run the Backend (FastAPI)
 
 1. Navigate to the backend directory:
    ```bash
@@ -36,13 +71,17 @@ Ensure you have the following installed on your machine:
    ```
 5. Start the backend server:
    ```bash
-   uvicorn main:app --reload --port 8000
+   alembic upgrade head
    ```
-   *The API will be available at `http://localhost:8000`.*
+6. Start the backend server:
+   ```bash
+   uvicorn app.main:app --reload --port 8000
+   ```
+   *The API and interactive docs will be available at `http://localhost:8000/docs`.*
 
 ---
 
-## Step 2: Run the Frontend (Vite + React)
+## Step 4: Run the Frontend (Vite + React)
 
 1. Open a new terminal window and navigate to the frontend directory:
    ```bash

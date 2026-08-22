@@ -14,6 +14,7 @@ import axios from "axios";
 import ProfileSettings from "./ProfileSettings";
 import { Search, LogOut, Send, Smile, Check, CheckCheck, Loader2, MessageCircle, Settings, Phone, Video, Info, MoreVertical, Plus, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import EmojiPicker from 'emoji-picker-react';
 
 /**
  * ChatDashboard component rendering the sidebar and active chat workspace.
@@ -50,6 +51,7 @@ export default function ChatDashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -249,8 +251,13 @@ export default function ChatDashboard() {
     
     sendMessage(activeConversation, messageInput.trim(), queryClient);
     setMessageInput("");
+    setShowEmojiPicker(false);
     localStorage.removeItem(`draft_${activeConversation}`);
     setTimeout(() => scrollToBottom(), 50);
+  };
+
+  const onEmojiClick = (emojiObject) => {
+    setMessageInput(prev => prev + emojiObject.emoji);
   };
 
   /**
@@ -713,9 +720,16 @@ export default function ChatDashboard() {
                   rows={1}
                 />
 
-                <button type="button" className="p-3 text-muted-text hover:text-mint hover:bg-white/60 rounded-full transition-all shrink-0" title="Emoji">
-                  <Smile size={22} />
-                </button>
+                <div className="relative">
+                  <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-3 text-muted-text hover:text-mint hover:bg-white/60 rounded-full transition-all shrink-0" title="Emoji">
+                    <Smile size={22} />
+                  </button>
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full right-0 mb-4 shadow-2xl z-50 animate-in fade-in slide-in-from-bottom-2">
+                      <EmojiPicker onEmojiClick={onEmojiClick} theme="light" />
+                    </div>
+                  )}
+                </div>
                 
                 <button 
                   type="submit" 
