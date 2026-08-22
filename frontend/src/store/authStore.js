@@ -116,6 +116,29 @@ export const useAuthStore = create((set, get) => ({
   },
 
   /**
+   * Authenticate user via Google OAuth2.
+   * 
+   * @param {string} credential - Google ID token
+   */
+  googleLogin: async (credential) => {
+    set({ loading: true });
+    try {
+      const res = await axios.post("http://localhost:8000/api/v1/auth/google", { credential }, { withCredentials: true });
+      const token = res.data.access_token;
+      
+      localStorage.setItem('token', token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+      const userRes = await axios.get('http://localhost:8000/api/v1/auth/me');
+      set({ user: userRes.data, token, loading: false });
+    } catch (error) {
+      console.error('Google login error', error);
+      set({ loading: false });
+      throw error;
+    }
+  },
+
+  /**
    * Register a new user and automatically log them in.
    * 
    * @param {Object} userData - Registration payload ({ username, nickname, email, password })

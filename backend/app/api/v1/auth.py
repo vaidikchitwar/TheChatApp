@@ -16,6 +16,12 @@ from app import models, schemas
 from app.db import session as database
 from app.services import auth as auth_service
 
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import os
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "YOUR_GOOGLE_CLIENT_ID")
+
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 # Curated palette of avatar background colors assigned upon user registration
@@ -103,6 +109,82 @@ async def login(response: Response, form_data: OAuth2PasswordRequestForm = Depen
     refresh_token = await auth_service.create_refresh_token(user_id=user.id, db=db)
     
     # Set HttpOnly cookie for refresh token to prevent XSS theft
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=auth_service.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/google")
+async def google_login(
+    response: Response, 
+    payload: schemas.GoogleTokenRequest, 
+    db: AsyncSession = Depends(database.get_db)
+):
+    """
+    Authenticate user via Google OAuth2 ID Token.
+    Creates a new user account if one doesn't exist.
+    """
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            payload.credential, 
+            google_requests.Request(), 
+            GOOGLE_CLIENT_ID, 
+            clock_skew_in_seconds=10
+        )
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google Token")
+    
+    google_id = idinfo["sub"]
+    email = idinfo["email"]
+    name = idinfo.get("name", "Google User")
+    avatar_url = idinfo.get("picture")
+
+    # Find user by google_id or email
+    result = await db.execute(select(models.User).filter(
+        (models.User.google_id == google_id) | (models.User.email == email)
+    ))
+    user = result.scalars().first()
+    
+    if not user:
+        # Create user
+        base_username = email.split("@")[0].lower()
+        base_username = "".join(e for e in base_username if e.isalnum())
+        username = base_username
+        
+        # Ensure username uniqueness
+        while True:
+            u_check = await db.execute(select(models.User).filter(models.User.username == username))
+            if not u_check.scalars().first():
+                break
+            username = f"{base_username}{random.randint(1000, 9999)}"
+
+        user = models.User(
+            username=username,
+            nickname=name,
+            email=email,
+            hashed_password=None,
+            google_id=google_id,
+            avatar_color=random.choice(COLORS),
+            avatar_url=avatar_url
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+    else:
+        # Update google_id if missing (e.g. they registered via email before)
+        if not user.google_id:
+            user.google_id = google_id
+            await db.commit()
+    
+    access_token = auth_service.create_access_token(data={"sub": user.username})
+    refresh_token = await auth_service.create_refresh_token(user_id=user.id, db=db)
+    
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,

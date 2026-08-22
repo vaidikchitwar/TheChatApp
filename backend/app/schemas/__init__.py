@@ -98,6 +98,10 @@ class TokenData(BaseModel):
     """Decoded JWT payload subject container."""
     username: str | None = None
 
+class GoogleTokenRequest(BaseModel):
+    """Google OAuth ID token payload."""
+    credential: str
+
 class MessageCreate(BaseModel):
     """REST schema for message creation with client-supplied idempotency key."""
     content: str
@@ -111,6 +115,9 @@ class MessageResponse(BaseModel):
     sender_id: int
     content: str
     status: str
+    media_url: Optional[str] = None
+    media_type: Optional[str] = None
+    media_size: Optional[int] = None
     created_at: datetime
 
     model_config = {"from_attributes": True}

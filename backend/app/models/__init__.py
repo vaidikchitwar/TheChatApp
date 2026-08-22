@@ -60,7 +60,8 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     nickname = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)
+    google_id = Column(String, unique=True, index=True, nullable=True)
     avatar_color = Column(String, nullable=False)
     avatar_url = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
@@ -126,6 +127,9 @@ class Message(Base):
     content = Column(Text, nullable=False)
     status = Column(Enum(MessageStatus), default=MessageStatus.SENT)
     created_at = Column(DateTime, index=True, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
+    media_url = Column(String, nullable=True)
+    media_type = Column(String, nullable=True)
+    media_size = Column(Integer, nullable=True)
 
     # Relationships
     conversation = relationship("Conversation", back_populates="messages")

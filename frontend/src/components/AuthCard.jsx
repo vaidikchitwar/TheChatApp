@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { Eye, EyeOff, MessageCircle, AlertCircle, Loader2 } from "lucide-react";
+import { GoogleLogin } from '@react-oauth/google';
 
 /**
  * AuthCard component managing login and registration form states.
@@ -19,7 +20,7 @@ import { Eye, EyeOff, MessageCircle, AlertCircle, Loader2 } from "lucide-react";
 export default function AuthCard() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, register, token } = useAuthStore();
+  const { login, register, token, googleLogin } = useAuthStore();
 
   // State for toggling between Sign In and Sign Up modes
   const [isSignUp, setIsSignUp] = useState(location.state?.isSignUp || false);
@@ -254,6 +255,35 @@ export default function AuthCard() {
             {isLoading ? <Loader2 className="animate-spin" size={24} /> : isSignUp ? "Create Account" : "Sign In"}
           </button>
         </form>
+
+        <div className="relative z-10 flex items-center justify-center mt-6 mb-2">
+          <div className="h-px bg-white/40 flex-1"></div>
+          <span className="px-4 text-sm font-bold text-muted-text">OR</span>
+          <div className="h-px bg-white/40 flex-1"></div>
+        </div>
+
+        <div className="relative z-10 flex justify-center mt-4">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              try {
+                setIsLoading(true);
+                setError(null);
+                await googleLogin(credentialResponse.credential);
+              } catch (err) {
+                setError(err.response?.data?.detail || "Google login failed");
+              } finally {
+                setIsLoading(false);
+              }
+            }}
+            onError={() => {
+              setError("Google Sign In was unsuccessful.");
+            }}
+            theme="filled_blue"
+            shape="pill"
+            size="large"
+            text={isSignUp ? "signup_with" : "signin_with"}
+          />
+        </div>
 
         {/* Toggle Mode Switcher */}
         <div className="mt-8 text-center relative z-10 pt-6 border-t border-white/40">

@@ -8,14 +8,18 @@ and cursor-based historical message retrieval for infinite scrolling.
 import base64
 from typing import List, Optional
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 from sqlalchemy.orm import selectinload
+import os
+import uuid
+import shutil
 
 from app import models, schemas
 from app.db import session as database
 from app.services import auth as auth_service
+from app.websocket.manager import manager
 
 router = APIRouter(prefix="/api/v1/conversations", tags=["conversations"])
 
@@ -210,4 +214,100 @@ async def get_messages(
     next_cursor = encode_cursor(messages[-1].id) if len(messages) == limit else None
     
     return {"items": messages, "next_cursor": next_cursor}
+
+@router.post("/{conversation_id}/messages/upload", response_model=schemas.MessageResponse)
+async def upload_message_media(
+    conversation_id: int,
+    file: UploadFile = File(...),
+    content: str = Form(""),
+    client_message_id: str = Form(...),
+    db: AsyncSession = Depends(database.get_db),
+    current_user: models.User = Depends(auth_service.get_current_user)
+):
+    """
+    Upload media/file and send as a chat message.
+    """
+    # Verify requesting user is a legitimate participant
+    result = await db.execute(select(models.ConversationParticipant).filter(
+        models.ConversationParticipant.conversation_id == conversation_id,
+        models.ConversationParticipant.user_id == current_user.id
+    ))
+    participant = result.scalars().first()
+    if not participant:
+        raise HTTPException(status_code=403, detail="Not part of this conversation")
+        
+    # Idempotency check
+    existing_result = await db.execute(
+        select(models.Message).filter(models.Message.client_message_id == client_message_id)
+    )
+    existing_msg = existing_result.scalars().first()
+    if existing_msg:
+        return existing_msg
+        
+    # Save file
+    uploads_dir = os.path.join(os.getcwd(), "uploads", str(conversation_id))
+    os.makedirs(uploads_dir, exist_ok=True)
+    
+    ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4().hex}{ext}"
+    file_path = os.path.join(uploads_dir, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    media_url = f"/uploads/{conversation_id}/{unique_filename}"
+    media_size = os.path.getsize(file_path)
+    
+    # Persist message
+    new_msg = models.Message(
+        client_message_id=client_message_id,
+        conversation_id=conversation_id,
+        sender_id=current_user.id,
+        content=content or file.filename,
+        media_url=media_url,
+        media_type=file.content_type,
+        media_size=media_size,
+        status=models.MessageStatus.SENT
+    )
+    db.add(new_msg)
+    
+    # Update conversation timestamp
+    conv_result = await db.execute(select(models.Conversation).filter(models.Conversation.id == conversation_id))
+    conv = conv_result.scalars().first()
+    if conv:
+        conv.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        
+    await db.commit()
+    await db.refresh(new_msg)
+    
+    # Broadcast to other participants
+    op_result = await db.execute(select(models.ConversationParticipant).filter(
+        models.ConversationParticipant.conversation_id == conversation_id,
+        models.ConversationParticipant.user_id != current_user.id
+    ))
+    other_participants = op_result.scalars().all()
+    
+    payload = {
+        "type": "NEW_MESSAGE",
+        "message": {
+            "id": new_msg.id,
+            "client_message_id": new_msg.client_message_id,
+            "conversation_id": new_msg.conversation_id,
+            "sender_id": new_msg.sender_id,
+            "content": new_msg.content,
+            "media_url": new_msg.media_url,
+            "media_type": new_msg.media_type,
+            "media_size": new_msg.media_size,
+            "status": new_msg.status.value,
+            "created_at": new_msg.created_at.isoformat()
+        }
+    }
+    
+    for op in other_participants:
+        delivered = await manager.send_personal_message(payload, op.user_id)
+        if delivered and new_msg.status == models.MessageStatus.SENT:
+            new_msg.status = models.MessageStatus.DELIVERED
+            await db.commit()
+            
+    return new_msg
 

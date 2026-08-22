@@ -13,3 +13,5 @@ asyncpg
 redis
 alembic
 email-validator
+google-auth==2.56.3
+python-multipart==0.0.32

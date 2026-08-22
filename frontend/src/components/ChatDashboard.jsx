@@ -49,7 +49,10 @@ export default function ChatDashboard() {
   const [messageInput, setMessageInput] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Load draft from LocalStorage when active conversation changes
   useEffect(() => {
@@ -133,6 +136,29 @@ export default function ChatDashboard() {
 
     if (scrollTop < 100 && hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !activeConversation) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("client_message_id", crypto.randomUUID());
+
+    try {
+      await axios.post(`http://localhost:8000/api/v1/conversations/${activeConversation}/messages/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setShowAttachmentMenu(false);
+      setTimeout(() => scrollToBottom(), 50);
+    } catch (err) {
+      console.error("Upload failed", err);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -224,6 +250,7 @@ export default function ChatDashboard() {
     sendMessage(activeConversation, messageInput.trim(), queryClient);
     setMessageInput("");
     localStorage.removeItem(`draft_${activeConversation}`);
+    setTimeout(() => scrollToBottom(), 50);
   };
 
   /**
@@ -592,7 +619,17 @@ export default function ChatDashboard() {
                             ? 'bg-gradient-to-br from-mint to-teal-500 text-white rounded-3xl rounded-tr-sm' 
                             : 'bg-white text-deepslate-900 rounded-3xl rounded-tl-sm border border-white/60'
                         }`}>
-                          <p className="text-[15px] font-medium leading-relaxed break-words">{msg.content}</p>
+                          {msg.media_url ? (
+                            msg.media_type && msg.media_type.startsWith("image/") ? (
+                              <img src={`http://localhost:8000${msg.media_url}`} alt="Attached Media" className="max-w-full rounded-lg mb-2" style={{ maxHeight: "300px" }} />
+                            ) : (
+                              <a href={`http://localhost:8000${msg.media_url}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 underline mb-2 break-all">
+                                📎 {msg.content}
+                              </a>
+                            )
+                          ) : (
+                            <p className="text-[15px] font-medium leading-relaxed break-words">{msg.content}</p>
+                          )}
                         </div>
                         <div className={`flex items-center gap-1.5 mt-1.5 px-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <span className="text-[11px] font-semibold text-muted-text">
@@ -631,20 +668,29 @@ export default function ChatDashboard() {
 
             {/* Input Composer */}
             <div className="p-5 bg-white/40 backdrop-blur-md border-t border-white/50 z-20">
+              <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
               <form onSubmit={handleSendMessage} className="flex items-end gap-2 bg-white/70 shadow-inner border border-white/60 rounded-3xl p-1.5 focus-within:ring-4 focus-within:ring-mint/20 focus-within:border-mint/50 focus-within:bg-white transition-all relative">
                 
-                <div className="relative group">
-                  <button type="button" className="p-3 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-full transition-all shrink-0" title="Attach">
+                <div className="relative">
+                  <button type="button" onClick={() => setShowAttachmentMenu(!showAttachmentMenu)} className="p-3 text-muted-text hover:text-deepslate-900 hover:bg-white/60 rounded-full transition-all shrink-0" title="Attach">
                     <Plus size={22} />
                   </button>
-                  <div className="absolute left-0 bottom-full mb-2 w-48 bg-white rounded-2xl shadow-xl border border-white/60 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex flex-col p-2 z-50 transform origin-bottom-left scale-95 group-hover:scale-100">
-                    <button className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-deepslate-900 hover:bg-cream/50 rounded-xl transition-colors">
-                      <span className="w-8 h-8 rounded-full bg-mint/20 flex items-center justify-center text-mint"><Search size={16} /></span> Document
-                    </button>
-                    <button className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-deepslate-900 hover:bg-cream/50 rounded-xl transition-colors">
-                      <span className="w-8 h-8 rounded-full bg-golden/20 flex items-center justify-center text-golden"><Search size={16} /></span> Photo & Video
-                    </button>
-                  </div>
+                  {showAttachmentMenu && (
+                    <div className="absolute bottom-full left-0 mb-4 bg-white/90 backdrop-blur-xl border border-white/60 shadow-xl rounded-2xl p-2 w-48 animate-in fade-in slide-in-from-bottom-2 z-50">
+                      <button onClick={() => fileInputRef.current.click()} className="w-full flex items-center gap-3 px-3 py-2 hover:bg-mint/10 text-deepslate-800 hover:text-mint rounded-xl transition-colors font-medium text-sm">
+                        <div className="bg-coral/10 p-2 rounded-lg text-coral">
+                          <Plus size={16} />
+                        </div>
+                        Document
+                      </button>
+                      <button onClick={() => fileInputRef.current.click()} className="w-full flex items-center gap-3 px-3 py-2 hover:bg-mint/10 text-deepslate-800 hover:text-mint rounded-xl transition-colors font-medium text-sm">
+                        <div className="bg-golden/10 p-2 rounded-lg text-golden">
+                          <Plus size={16} />
+                        </div>
+                        Photo & Video
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <textarea 
@@ -673,10 +719,10 @@ export default function ChatDashboard() {
                 
                 <button 
                   type="submit" 
-                  disabled={!messageInput.trim()}
+                  disabled={(!messageInput.trim() && !isUploading) || !activeConversation}
                   className="p-3 bg-gradient-to-r from-mint to-teal-500 text-white rounded-full hover:shadow-glow transition-all disabled:opacity-50 disabled:hover:shadow-none shrink-0 shadow-md flex items-center justify-center w-11 h-11 mb-0.5 mr-0.5"
                 >
-                  <Send size={18} className="ml-0.5" />
+                  {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="ml-0.5" />}
                 </button>
               </form>
             </div>
