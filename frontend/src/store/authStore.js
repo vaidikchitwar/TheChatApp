@@ -7,6 +7,7 @@
 
 import { create } from 'zustand';
 import axios from 'axios';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export const useAuthStore = create((set, get) => ({
   /** @type {Object|null} Authenticated user profile (id, username, nickname, email, avatar_color) */
@@ -39,7 +40,7 @@ export const useAuthStore = create((set, get) => ({
   logout: async () => {
     try {
       // Notify backend to revoke refresh token and clear HttpOnly cookie
-      await axios.post('http://localhost:8000/api/v1/auth/logout', {}, { withCredentials: true });
+      await axios.post(`${API_URL}/api/v1/auth/logout`, {}, { withCredentials: true });
     } catch (error) {
       console.error('Logout error', error);
     }
@@ -66,17 +67,17 @@ export const useAuthStore = create((set, get) => ({
     try {
       // First attempt /auth/me with current access token
       if (token) {
-        const res = await axios.get('http://localhost:8000/api/v1/auth/me');
+        const res = await axios.get(`${API_URL}/api/v1/auth/me`);
         set({ user: res.data, loading: false });
         return;
       }
       
       // If no access token, attempt silent refresh using the HttpOnly cookie
-      const refreshRes = await axios.post('http://localhost:8000/api/v1/auth/refresh', {}, { withCredentials: true });
+      const refreshRes = await axios.post(`${API_URL}/api/v1/auth/refresh`, {}, { withCredentials: true });
       setAuth(null, refreshRes.data.access_token);
       
       // Fetch user profile with newly acquired access token
-      const userRes = await axios.get('http://localhost:8000/api/v1/auth/me');
+      const userRes = await axios.get(`${API_URL}/api/v1/auth/me`);
       set({ user: userRes.data, loading: false });
 
     } catch (error) {
@@ -103,7 +104,7 @@ export const useAuthStore = create((set, get) => ({
 
     set({ loading: true });
     // Post credentials to OAuth2 form-compatible login endpoint
-    const res = await axios.post("http://localhost:8000/api/v1/auth/login", formData, { withCredentials: true });
+    const res = await axios.post(`${API_URL}/api/v1/auth/login`, formData, { withCredentials: true });
     const token = res.data.access_token;
     
     // Store token and configure Axios header
@@ -111,7 +112,7 @@ export const useAuthStore = create((set, get) => ({
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     
     // Fetch profile and atomically commit authenticated state
-    const userRes = await axios.get('http://localhost:8000/api/v1/auth/me');
+    const userRes = await axios.get(`${API_URL}/api/v1/auth/me`);
     set({ user: userRes.data, token, loading: false });
   },
 
@@ -123,13 +124,13 @@ export const useAuthStore = create((set, get) => ({
   googleLogin: async (credential) => {
     set({ loading: true });
     try {
-      const res = await axios.post("http://localhost:8000/api/v1/auth/google", { credential }, { withCredentials: true });
+      const res = await axios.post(`${API_URL}/api/v1/auth/google`, { credential }, { withCredentials: true });
       const token = res.data.access_token;
       
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
-      const userRes = await axios.get('http://localhost:8000/api/v1/auth/me');
+      const userRes = await axios.get(`${API_URL}/api/v1/auth/me`);
       set({ user: userRes.data, token, loading: false });
     } catch (error) {
       console.error('Google login error', error);
@@ -144,7 +145,7 @@ export const useAuthStore = create((set, get) => ({
    * @param {Object} userData - Registration payload ({ username, nickname, email, password })
    */
   register: async (userData) => {
-    await axios.post("http://localhost:8000/api/v1/auth/register", userData);
+    await axios.post(`${API_URL}/api/v1/auth/register`, userData);
     // Automatically log in using the same credentials after successful registration
     await get().login(userData.username, userData.password);
   },
@@ -155,7 +156,7 @@ export const useAuthStore = create((set, get) => ({
    * @param {Object} updateData - Profile fields to update
    */
   updateProfile: async (updateData) => {
-    const res = await axios.patch("http://localhost:8000/api/v1/users/me", updateData);
+    const res = await axios.patch(`${API_URL}/api/v1/users/me`, updateData);
     set({ user: res.data });
   },
 
@@ -168,7 +169,7 @@ export const useAuthStore = create((set, get) => ({
     const formData = new FormData();
     formData.append("file", file);
     
-    const res = await axios.post("http://localhost:8000/api/v1/users/me/avatar", formData, {
+    const res = await axios.post(`${API_URL}/api/v1/users/me/avatar`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -183,7 +184,7 @@ export const useAuthStore = create((set, get) => ({
    * @param {string} newPassword - New password
    */
   changePassword: async (currentPassword, newPassword) => {
-    await axios.post("http://localhost:8000/api/v1/auth/change-password", {
+    await axios.post(`${API_URL}/api/v1/auth/change-password`, {
       current_password: currentPassword,
       new_password: newPassword
     });
