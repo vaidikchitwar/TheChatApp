@@ -8,6 +8,7 @@
 
 import { create } from 'zustand';
 import { useAuthStore } from './authStore';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 export const useChatStore = create((set, get) => ({
   /** @type {WebSocket|null} Active native WebSocket connection instance */
@@ -51,7 +52,7 @@ export const useChatStore = create((set, get) => ({
       get().ws.close();
     }
 
-    const ws = new WebSocket(`ws://localhost:8000/api/v1/websockets/ws/${token}`);
+    const ws = new WebSocket(`${WS_URL}/api/v1/websockets/ws/${token}`);
 
     ws.onopen = () => {
       set({ isConnected: true, reconnectAttempts: 0 });
