@@ -8,9 +8,10 @@ and idempotency checking via client_message_id.
 
 import json
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
-from sqlalchemy.ext.asyncio import AsyncSession
+
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import models
 from app.db import session as database
@@ -19,12 +20,9 @@ from app.websocket.manager import manager
 
 router = APIRouter(prefix="/api/v1/websockets", tags=["websockets"])
 
+
 @router.websocket("/ws/{token}")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    token: str,
-    db: AsyncSession = Depends(database.get_db)
-):
+async def websocket_endpoint(websocket: WebSocket, token: str, db: AsyncSession = Depends(database.get_db)):
     """
     WebSocket Connection Handler for Authenticated Users.
 
@@ -55,17 +53,13 @@ async def websocket_endpoint(
 
     # 2. Register socket connection locally and increment presence in Redis
     await manager.connect(user.id, websocket)
-    
+
     # Mark user as online in database
     user.is_online = True
     await db.commit()
-    
+
     # 3. Broadcast online presence to all other users across the cluster
-    await manager.broadcast({
-        "type": "PRESENCE",
-        "user_id": user.id,
-        "status": "ONLINE"
-    }, exclude_user_id=user.id)
+    await manager.broadcast({"type": "PRESENCE", "user_id": user.id, "status": "ONLINE"}, exclude_user_id=user.id)
 
     try:
         while True:
@@ -79,7 +73,7 @@ async def websocket_endpoint(
                 conversation_id = message_data.get("conversation_id")
                 content = message_data.get("content")
                 client_message_id = message_data.get("client_message_id")
-                
+
                 # 1. Idempotency check: if client_message_id exists, do not duplicate
                 if client_message_id:
                     existing_result = await db.execute(
@@ -88,22 +82,27 @@ async def websocket_endpoint(
                     existing_msg = existing_result.scalars().first()
                     if existing_msg:
                         # Re-send ACK back to sender immediately
-                        await manager.send_personal_message({
-                            "type": "MESSAGE_ACK",
-                            "client_message_id": client_message_id,
-                            "message_id": existing_msg.id,
-                            "status": existing_msg.status.value,
-                            "created_at": existing_msg.created_at.isoformat()
-                        }, user.id)
+                        await manager.send_personal_message(
+                            {
+                                "type": "MESSAGE_ACK",
+                                "client_message_id": client_message_id,
+                                "message_id": existing_msg.id,
+                                "status": existing_msg.status.value,
+                                "created_at": existing_msg.created_at.isoformat(),
+                            },
+                            user.id,
+                        )
                         continue
 
                 # Verify sender is a valid participant of the conversation
-                result = await db.execute(select(models.ConversationParticipant).filter(
-                    models.ConversationParticipant.conversation_id == conversation_id,
-                    models.ConversationParticipant.user_id == user.id
-                ))
+                result = await db.execute(
+                    select(models.ConversationParticipant).filter(
+                        models.ConversationParticipant.conversation_id == conversation_id,
+                        models.ConversationParticipant.user_id == user.id,
+                    )
+                )
                 participant = result.scalars().first()
-                
+
                 if participant:
                     # Persist new message in database
                     new_msg = models.Message(
@@ -111,35 +110,42 @@ async def websocket_endpoint(
                         conversation_id=conversation_id,
                         sender_id=user.id,
                         content=content,
-                        status=models.MessageStatus.SENT
+                        status=models.MessageStatus.SENT,
                     )
                     db.add(new_msg)
-                    
+
                     # Update conversation last modified timestamp
-                    conv_result = await db.execute(select(models.Conversation).filter(models.Conversation.id == conversation_id))
+                    conv_result = await db.execute(
+                        select(models.Conversation).filter(models.Conversation.id == conversation_id)
+                    )
                     conv = conv_result.scalars().first()
                     if conv:
                         conv.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-                    
+
                     await db.commit()
                     await db.refresh(new_msg)
-                    
+
                     # 2. Return immediate MESSAGE_ACK to sender
-                    await manager.send_personal_message({
-                        "type": "MESSAGE_ACK",
-                        "client_message_id": client_message_id,
-                        "message_id": new_msg.id,
-                        "status": new_msg.status.value,
-                        "created_at": new_msg.created_at.isoformat()
-                    }, user.id)
-                    
+                    await manager.send_personal_message(
+                        {
+                            "type": "MESSAGE_ACK",
+                            "client_message_id": client_message_id,
+                            "message_id": new_msg.id,
+                            "status": new_msg.status.value,
+                            "created_at": new_msg.created_at.isoformat(),
+                        },
+                        user.id,
+                    )
+
                     # 3. Deliver NEW_MESSAGE payload to all other participants
-                    op_result = await db.execute(select(models.ConversationParticipant).filter(
-                        models.ConversationParticipant.conversation_id == conversation_id,
-                        models.ConversationParticipant.user_id != user.id
-                    ))
+                    op_result = await db.execute(
+                        select(models.ConversationParticipant).filter(
+                            models.ConversationParticipant.conversation_id == conversation_id,
+                            models.ConversationParticipant.user_id != user.id,
+                        )
+                    )
                     other_participants = op_result.scalars().all()
-                    
+
                     payload = {
                         "type": "NEW_MESSAGE",
                         "message": {
@@ -149,10 +155,10 @@ async def websocket_endpoint(
                             "sender_id": new_msg.sender_id,
                             "content": new_msg.content,
                             "status": new_msg.status.value,
-                            "created_at": new_msg.created_at.isoformat()
-                        }
+                            "created_at": new_msg.created_at.isoformat(),
+                        },
                     }
-                    
+
                     for op in other_participants:
                         delivered = await manager.send_personal_message(payload, op.user_id)
                         if delivered and new_msg.status == models.MessageStatus.SENT:
@@ -162,17 +168,17 @@ async def websocket_endpoint(
             # --- Handler: TYPING Indicator ---
             elif msg_type == "TYPING":
                 conversation_id = message_data.get("conversation_id")
-                op_result = await db.execute(select(models.ConversationParticipant).filter(
-                    models.ConversationParticipant.conversation_id == conversation_id,
-                    models.ConversationParticipant.user_id != user.id
-                ))
+                op_result = await db.execute(
+                    select(models.ConversationParticipant).filter(
+                        models.ConversationParticipant.conversation_id == conversation_id,
+                        models.ConversationParticipant.user_id != user.id,
+                    )
+                )
                 other_participants = op_result.scalars().all()
                 for op in other_participants:
-                    await manager.send_personal_message({
-                        "type": "TYPING",
-                        "conversation_id": conversation_id,
-                        "user_id": user.id
-                    }, op.user_id)
+                    await manager.send_personal_message(
+                        {"type": "TYPING", "conversation_id": conversation_id, "user_id": user.id}, op.user_id
+                    )
 
             # --- Handler: MESSAGE_READ Receipt ---
             elif msg_type == "MESSAGE_READ":
@@ -182,14 +188,17 @@ async def websocket_endpoint(
                 if msg and msg.sender_id != user.id:
                     msg.status = models.MessageStatus.READ
                     await db.commit()
-                    
+
                     # Notify message sender that message has been read
-                    await manager.send_personal_message({
-                        "type": "MESSAGE_READ",
-                        "message_id": message_id,
-                        "conversation_id": msg.conversation_id,
-                        "user_id": user.id
-                    }, msg.sender_id)
+                    await manager.send_personal_message(
+                        {
+                            "type": "MESSAGE_READ",
+                            "message_id": message_id,
+                            "conversation_id": msg.conversation_id,
+                            "user_id": user.id,
+                        },
+                        msg.sender_id,
+                    )
 
     except WebSocketDisconnect:
         # Disconnect cleanup: unregister local socket and decrement Redis presence
@@ -198,10 +207,7 @@ async def websocket_endpoint(
         user.last_seen = datetime.now(timezone.utc).replace(tzinfo=None)
         await db.commit()
         # Broadcast offline status to remaining connected clients
-        await manager.broadcast({
-            "type": "PRESENCE",
-            "user_id": user.id,
-            "status": "OFFLINE",
-            "last_seen": user.last_seen.isoformat()
-        }, exclude_user_id=user.id)
-
+        await manager.broadcast(
+            {"type": "PRESENCE", "user_id": user.id, "status": "OFFLINE", "last_seen": user.last_seen.isoformat()},
+            exclude_user_id=user.id,
+        )

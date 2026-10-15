@@ -1,0 +1,19 @@
+[project]
+name = "thechatapp-backend"
+version = "1.0.0"
+description = "High-Concurrency Real-Time Chat Engine with FastAPI, Redis, and WebSockets"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501", "E402", "E712"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = ["tests"]
+pythonpath = ["."]

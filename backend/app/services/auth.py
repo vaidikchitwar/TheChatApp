@@ -6,16 +6,17 @@ refresh token rotation, and current user retrieval dependencies.
 """
 
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
+from jose import JWTError, jwt
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app import models
 from app.db import session as database
-from app import models, schemas
-import secrets
 
 # JWT and Token Configuration
 SECRET_KEY = os.environ.get("SECRET_KEY", "b34e40e6c5184b2ab7b8c7e9d8f9024f2b1d3a5e8c7b8d6f9a0b1c2d3e4f5a6")
@@ -23,11 +24,11 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 15
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# Cryptographic password hashing context using Bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
 
 # OAuth2 scheme for extracting Bearer tokens from request Authorization headers
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -40,7 +41,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         bool: True if the password matches, False otherwise.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8")[:72], hashed_password.encode("utf-8"))
+    except Exception:
+        return False
+
 
 def get_password_hash(password: str) -> str:
     """
@@ -52,7 +57,9 @@ def get_password_hash(password: str) -> str:
     Returns:
         str: The generated password hash string.
     """
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode("utf-8")[:72], salt).decode("utf-8")
+
 
 def create_access_token(data: dict) -> str:
     """
@@ -69,6 +76,7 @@ def create_access_token(data: dict) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
 
 async def create_refresh_token(user_id: int, db: AsyncSession) -> str:
     """
@@ -89,7 +97,10 @@ async def create_refresh_token(user_id: int, db: AsyncSession) -> str:
     await db.commit()
     return token
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(database.get_db)) -> models.User:
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(database.get_db)
+) -> models.User:
     """
     FastAPI Dependency: Extract and validate the JWT Bearer token to fetch the authenticated user.
 
@@ -116,12 +127,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-    
+
     # Query database for the user corresponding to the token subject
     result = await db.execute(select(models.User).filter(models.User.username == username))
     user = result.scalars().first()
-    
+
     if user is None:
         raise credentials_exception
     return user
-

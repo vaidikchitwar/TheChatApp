@@ -6,15 +6,17 @@ It maintains active local WebSocket connections and leverages Redis Pub/Sub to b
 and route real-time events (messages, presence, typing, read receipts) across instances.
 """
 
-import json
 import asyncio
-from typing import Dict, Set, Any
-from fastapi import WebSocket
-import redis.asyncio as redis
+import json
 import os
+from typing import Dict, Set
+
+import redis.asyncio as redis
+from fastapi import WebSocket
 
 # Redis connection URL (configurable via environment variables)
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
 
 class ConnectionManager:
     """
@@ -28,7 +30,7 @@ class ConnectionManager:
         # Async Redis client and pubsub listener references
         self.redis: redis.Redis = None
         self.pubsub: redis.client.PubSub = None
-        
+
     async def connect_redis(self):
         """
         Establish connection to Redis and launch the background pubsub event listener task.
@@ -52,7 +54,7 @@ class ConnectionManager:
         if user_id not in self.active_connections:
             self.active_connections[user_id] = set()
         self.active_connections[user_id].add(websocket)
-        
+
         # Increment active socket count for user in Redis presence hash
         count = await self.redis.hincrby("presence", str(user_id), 1)
         if count == 1:
@@ -71,7 +73,7 @@ class ConnectionManager:
             self.active_connections[user_id].discard(websocket)
             if not self.active_connections[user_id]:
                 del self.active_connections[user_id]
-                
+
         # Decrement user presence count in Redis; delete key if no active connections remain
         count = await self.redis.hincrby("presence", str(user_id), -1)
         if count <= 0:
@@ -88,10 +90,7 @@ class ConnectionManager:
         Returns:
             bool: True upon publishing to the channel.
         """
-        payload = {
-            "target_user_id": user_id,
-            "data": message
-        }
+        payload = {"target_user_id": user_id, "data": message}
         # Publish to the global Redis channel so whatever instance hosts the user can deliver it
         await self.redis.publish("chat:events", json.dumps(payload))
         return True
@@ -104,11 +103,7 @@ class ConnectionManager:
             message (dict): Event payload (e.g. PRESENCE).
             exclude_user_id (int, optional): User ID to exclude from broadcast receipt.
         """
-        payload = {
-            "target_user_id": "ALL",
-            "exclude_user_id": exclude_user_id,
-            "data": message
-        }
+        payload = {"target_user_id": "ALL", "exclude_user_id": exclude_user_id, "data": message}
         await self.redis.publish("chat:events", json.dumps(payload))
 
     async def _listen_to_redis(self):
@@ -147,6 +142,6 @@ class ConnectionManager:
         except Exception as e:
             print(f"Redis listener error: {e}")
 
+
 # Global singleton instance of ConnectionManager
 manager = ConnectionManager()
-
