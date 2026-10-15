@@ -11,7 +11,9 @@
 ![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white)
 ![Docker Compose](https://img.shields.io/badge/Docker-Compose_Ready-2496ED?logo=docker&logoColor=white)
 
-[**Live Demo Placeholder**](https://uca.demo.app) • [**Video Walkthrough Placeholder**](https://youtube.com) • [**API Docs (Swagger)**](http://localhost:8000/docs)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Frontend_Preview-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://vaidikchitwar.github.io/TheChatApp/)
+
+[**Live Web Client Preview**](https://vaidikchitwar.github.io/TheChatApp/) • [**Local API Docs (Swagger)**](http://localhost:8000/docs)
 
 ---
 
