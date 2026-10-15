@@ -2,27 +2,71 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15
-    container_name: chatapp_db
+    image: postgres:15-alpine
+    container_name: uca_postgres
     environment:
-      POSTGRES_USER: chatuser
-      POSTGRES_PASSWORD: chatpassword
-      POSTGRES_DB: chat_app_prod
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: chatapp
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: chatapp_redis
+    container_name: uca_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uca_backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/chatapp
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY:-production_secret_key_change_in_env_32_chars}
+      ALGORITHM: HS256
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy_client_id}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: uca_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:
   postgres_data:
   redis_data:
+  backend_uploads:

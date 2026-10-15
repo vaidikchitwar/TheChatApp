@@ -17,3 +17,4 @@ google-auth==2.56.3
 python-multipart==0.0.32
 requests==2.34.2
 psycopg2-binary>=2.9.0
+psycopg[binary]>=3.1.0

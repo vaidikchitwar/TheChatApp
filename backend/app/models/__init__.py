@@ -5,25 +5,30 @@ Defines the relational schema for users, conversations, participants, messages,
 and refresh tokens stored in PostgreSQL.
 """
 
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Text, Enum
-from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 import enum
+from datetime import datetime, timezone
+
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
 
 from app.db.session import Base
 
+
 class FriendshipStatus(str, enum.Enum):
     """Enumeration of friendship states."""
+
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     BLOCKED = "BLOCKED"
 
+
 class Friendship(Base):
     """
     Friendship Model.
-    
+
     Represents the social graph edges (friends, blocks, requests).
     """
+
     __tablename__ = "friendships"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -34,18 +39,21 @@ class Friendship(Base):
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
     )
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
     friend = relationship("User", foreign_keys=[friend_id])
 
+
 class MessageStatus(str, enum.Enum):
     """Enumeration of message delivery and read states."""
-    SENT = "SENT"            # Persisted to server database and acknowledged to sender
+
+    SENT = "SENT"  # Persisted to server database and acknowledged to sender
     DELIVERED = "DELIVERED"  # Pushed to recipient WebSocket
-    READ = "READ"            # Rendered and acknowledged by recipient
+    READ = "READ"  # Rendered and acknowledged by recipient
+
 
 class User(Base):
     """
@@ -54,6 +62,7 @@ class User(Base):
     Stores registration credentials, profile customization (nickname, avatar color),
     and real-time connection presence status.
     """
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -66,7 +75,7 @@ class User(Base):
     avatar_url = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
     status_message = Column(String, nullable=True)
-    privacy = Column(String, default="PUBLIC") # Can be PUBLIC, PRIVATE
+    privacy = Column(String, default="PUBLIC")  # Can be PUBLIC, PRIVATE
     is_online = Column(Boolean, default=False)
     last_seen = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
@@ -75,12 +84,14 @@ class User(Base):
     participants = relationship("ConversationParticipant", back_populates="user")
     messages = relationship("Message", back_populates="sender")
 
+
 class Conversation(Base):
     """
     Conversation Thread Model.
 
     Represents a 1-on-1 direct message or multi-user group chat room.
     """
+
     __tablename__ = "conversations"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -90,17 +101,19 @@ class Conversation(Base):
     updated_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None)
+        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
     )
 
     # Relationships
     participants = relationship("ConversationParticipant", back_populates="conversation")
     messages = relationship("Message", back_populates="conversation")
 
+
 class ConversationParticipant(Base):
     """
     Association table joining Users and Conversations.
     """
+
     __tablename__ = "conversation_participants"
 
     conversation_id = Column(Integer, ForeignKey("conversations.id"), primary_key=True)
@@ -111,6 +124,7 @@ class ConversationParticipant(Base):
     conversation = relationship("Conversation", back_populates="participants")
     user = relationship("User", back_populates="participants")
 
+
 class Message(Base):
     """
     Chat Message Model.
@@ -118,6 +132,7 @@ class Message(Base):
     Stores message content, unique client idempotency token, sender reference,
     and lifecycle status (SENT, DELIVERED, READ).
     """
+
     __tablename__ = "messages"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -135,12 +150,14 @@ class Message(Base):
     conversation = relationship("Conversation", back_populates="messages")
     sender = relationship("User", back_populates="messages")
 
+
 class RefreshToken(Base):
     """
     Persistent Refresh Token Model.
 
     Stores cryptographically secure tokens issued in HttpOnly cookies, supporting revocation upon logout/rotation.
     """
+
     __tablename__ = "refresh_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -152,4 +169,3 @@ class RefreshToken(Base):
 
     # Relationship
     user = relationship("User")
-

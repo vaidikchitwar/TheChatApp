@@ -6,12 +6,13 @@ This module creates the FastAPI application instance, registers lifecycle events
 and mounts all version 1 API and WebSocket routers.
 """
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
 
-from app.api.v1 import auth, conversations, users, websockets, friends
+from app.api.v1 import auth, conversations, friends, users, websockets
 from app.websocket.manager import manager
 
 # Ensure uploads directory exists
@@ -21,8 +22,9 @@ os.makedirs("uploads", exist_ok=True)
 app = FastAPI(
     title="Chat Application",
     description="High-performance, multi-user real-time chat application with PostgreSQL, Redis Pub/Sub, and WebSockets.",
-    version="1.0.0"
+    version="1.0.0",
 )
+
 
 @app.on_event("startup")
 async def startup():
@@ -32,6 +34,7 @@ async def startup():
     """
     await manager.connect_redis()
 
+
 @app.on_event("shutdown")
 async def shutdown():
     """
@@ -40,6 +43,7 @@ async def shutdown():
     """
     if manager.redis:
         await manager.redis.aclose()
+
 
 # Configure Cross-Origin Resource Sharing (CORS) to allow browser frontend requests
 app.add_middleware(

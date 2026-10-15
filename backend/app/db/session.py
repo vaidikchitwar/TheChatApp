@@ -5,7 +5,7 @@ This module configures the asynchronous SQLAlchemy engine, the sessionmaker fact
 and provides a dependency for obtaining database sessions in FastAPI route handlers.
 """
 
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import declarative_base
 
 # Database connection URL for PostgreSQL using the asyncpg driver
@@ -29,13 +29,14 @@ AsyncSessionLocal = async_sessionmaker(
 # Base declarative class for all SQLAlchemy ORM models
 Base = declarative_base()
 
+
 async def get_db():
     """
     FastAPI Dependency: Yields an async SQLAlchemy database session.
 
     Ensures that each HTTP request or WebSocket connection gets a dedicated database
     session that is automatically closed when the request lifecycle ends.
-    
+
     Yields:
         AsyncSession: The active database session.
     """
